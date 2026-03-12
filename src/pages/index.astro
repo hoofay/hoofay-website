@@ -1,0 +1,118 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionCard from '../components/SectionCard.astro';
+---
+
+<BaseLayout title="Home" description="hoofay.com — web games, board game tools, data science, and christmas adventures">
+  <!-- Hero -->
+  <section class="relative py-24 px-6 text-center overflow-hidden">
+    <!-- Ambient glow blobs -->
+    <div class="absolute top-20 left-1/4  w-72 h-72 rounded-full blur-3xl opacity-8  bg-games/20        pointer-events-none"></div>
+    <div class="absolute top-32 right-1/4 w-72 h-72 rounded-full blur-3xl opacity-8  bg-datascience/20  pointer-events-none"></div>
+    <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-40 rounded-full blur-3xl opacity-6 bg-boardgame/15 pointer-events-none"></div>
+
+    <div class="relative max-w-3xl mx-auto">
+      <div class="mb-6 flex justify-center">
+        <span id="coin-tag" class="tag bg-games/10 text-games border border-games/30 font-mono cursor-pointer select-none transition-transform active:scale-95" title="...">
+          INSERT COIN TO PLAY
+        </span>
+      </div>
+
+      <h1 class="pixel-heading text-3xl sm:text-4xl md:text-5xl text-text-primary mb-6 leading-loose">
+        <span class="text-games glow-cyan animate-flicker">hoofay</span>
+        <span class="text-text-muted">.com</span>
+      </h1>
+
+      <p class="text-text-secondary text-lg sm:text-xl leading-relaxed max-w-xl mx-auto mb-10">
+        A family corner of the internet. Games to play, tools to use,
+        data to explore, and puzzles for the festive season.
+      </p>
+
+      <div class="flex flex-wrap justify-center gap-3">
+        <a href="/games"       class="px-5 py-2.5 rounded-lg bg-games/10 text-games border border-games/40 hover:bg-games/20 hover:box-glow-cyan transition-all text-sm font-medium">Play Games</a>
+        <a href="/boardgame"   class="px-5 py-2.5 rounded-lg bg-boardgame/10 text-boardgame border border-boardgame/40 hover:bg-boardgame/20 transition-all text-sm font-medium">Board Game Tools</a>
+        <a href="/datascience" class="px-5 py-2.5 rounded-lg bg-datascience/10 text-datascience border border-datascience/40 hover:bg-datascience/20 transition-all text-sm font-medium">Modelling Fun</a>
+        <a href="/christmas"   class="px-5 py-2.5 rounded-lg bg-christmas/10 text-christmas border border-christmas/40 hover:bg-christmas/20 transition-all text-sm font-medium">Christmas</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section cards -->
+  <section class="max-w-6xl mx-auto px-6 pb-24">
+    <h2 class="text-text-muted text-xs font-mono uppercase tracking-widest mb-8 text-center">— select your section —</h2>
+
+    <div class="grid sm:grid-cols-2 gap-5">
+      <SectionCard
+        href="/games"
+        label="LEVEL 1"
+        title="Web Games"
+        description="Browser games made by a 9-year-old with big ideas. No downloads, no fuss — just play in your browser."
+        color="games"
+        items={['Fully browser-based', 'New games added regularly', 'Made with love (and lots of bugs)']}
+      />
+
+      <SectionCard
+        href="/boardgame"
+        label="LEVEL 2"
+        title="Board Game Tools"
+        description="Dice rollers, score trackers, turn timers and more — digital helpers for your analogue game nights."
+        color="boardgame"
+        items={['Dice roller (multi-sided)', 'Score tracker', 'More tools coming soon']}
+      />
+
+      <SectionCard
+        href="/datascience"
+        label="LEVEL 3"
+        title="Modelling Fun"
+        description="Interactive apps, experiments, and writeups from the data-obsessed corner of hoofay."
+        color="datascience"
+        items={['Interactive Streamlit apps', 'R Shiny experiments', 'Project showcases']}
+      />
+
+      <SectionCard
+        href="/christmas"
+        label="BONUS LEVEL"
+        title="Christmas"
+        description="The annual puzzle hunt lives here. Riddles, ciphers, and festive chaos for the whole family."
+        color="christmas"
+        items={['Annual puzzle hunt', 'Festive riddles & ciphers', 'New content each December']}
+      />
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // ── Easter egg: coin sound on "INSERT COIN TO PLAY" ─────────────────────
+  const coinTag = document.getElementById('coin-tag');
+  let audioCtx: AudioContext | null = null;
+
+  function playCoin() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const ctx = audioCtx;
+
+    // Two-tone ascending square wave — classic arcade coin pickup
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(988,  ctx.currentTime);        // B5
+    osc.frequency.setValueAtTime(1319, ctx.currentTime + 0.08); // E6
+
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.28);
+  }
+
+  coinTag?.addEventListener('click', () => {
+    playCoin();
+    // Brief pop animation
+    coinTag.style.transform = 'scale(1.15)';
+    setTimeout(() => { coinTag.style.transform = ''; }, 150);
+  });
+</script>

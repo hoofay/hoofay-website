@@ -1,0 +1,151 @@
+---
+import SectionLayout from '../../layouts/SectionLayout.astro';
+import ToolCard from '../../components/ToolCard.astro';
+
+// ── BLOG POSTS ───────────────────────────────────────────────────────────────
+// To add a new blog post:
+// 1. Create a new .astro file in src/pages/datascience/blog/
+//    (copy the template from _templates/blog-post.astro)
+// 2. Add an entry to this array.
+const posts = [
+  // {
+  //   href:        '/datascience/blog/my-first-post',
+  //   title:       'My First Post',
+  //   description: 'What this post is about.',
+  //   date:        '2025-01-01',
+  //   tags:        ['python', 'analysis'],
+  // },
+];
+
+// ── STREAMLIT APPS / TOOLS ───────────────────────────────────────────────────
+// Streamlit apps are hosted on Streamlit Community Cloud (share.streamlit.io)
+// and embedded here as iframes. Add entries below.
+const tools = [
+  {
+    href:        '/datascience/tools/football-en-stats',
+    title:       'Football EN Stats',
+    description: 'Explore football statistics — league tables, team performance, and more.',
+  },
+  {
+    href:        '/datascience/tools/cross-stitch',
+    title:       'Cross Stitch Pattern Maker',
+    description: 'Turn images into cross stitch patterns — choose your colours and stitch count (authorisation required).',
+  },
+  {
+    href:        '/datascience/tools/tom-and-jerry',
+    title:       'Tom & Jerry Cartooniser',
+    description: 'Upload a photo and transform it into a Tom & Jerry cartoon style.',
+  },
+  {
+    href:        '/datascience/tools/monster-maker',
+    title:       'Monster Maker',
+    description: 'Generate your own unique D&D monster for quick campaign battles.',
+  },
+];
+
+// ── R SHINY APPS (external links — can't embed due to hosting restrictions) ──
+const shinyApps = [
+  {
+    href:        'https://hoofay.shinyapps.io/easy_ml/',
+    title:       'Easy ML',
+    description: 'Very simple point-and-click machine learning — train models on your own data without writing code.',
+  },
+  {
+    href:        'https://hoofay.shinyapps.io/drivetime/',
+    title:       'Drive Time',
+    description: 'Simple visualisation of UK travel times based on postcodes.',
+  },
+  {
+    href:        'https://hoofay.shinyapps.io/forecast/',
+    title:       'Forecast',
+    description: 'Interactive time series forecasting learning tool — upload your data and explore predictions.',
+  },
+];
+// ────────────────────────────────────────────────────────────────────────────
+---
+
+<SectionLayout
+  title="Modelling Fun"
+  description="Interactive apps, Streamlit experiments, and writeups."
+  section="datascience"
+  hero={{
+    label:   'ANALYSING...',
+    heading: 'Modelling Fun',
+    sub:     'Interactive apps, Streamlit experiments, and writeups from the data-obsessed corner of hoofay.',
+    color:   'datascience',
+  }}
+>
+  <!-- Streamlit tools section -->
+  {tools.length > 0 && (
+    <section class="mb-14">
+      <h2 class="text-text-muted text-xs font-mono uppercase tracking-widest mb-5">— streamlit apps —</h2>
+      <div class="grid sm:grid-cols-2 gap-4">
+        {tools.map(tool => (
+          <ToolCard
+            href={tool.href}
+            title={tool.title}
+            description={tool.description}
+            color="datascience"
+          />
+        ))}
+      </div>
+    </section>
+  )}
+
+  <!-- R Shiny apps (external) -->
+  {shinyApps.length > 0 && (
+    <section class="mb-14">
+      <h2 class="text-text-muted text-xs font-mono uppercase tracking-widest mb-5">— r shiny apps —</h2>
+      <div class="grid sm:grid-cols-2 gap-4">
+        {shinyApps.map(app => (
+          <a
+            href={app.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="card flex items-start gap-4 p-5 border-surface-border hover:border-datascience/60 hover:bg-datascience/5 hover:box-glow-purple group transition-all duration-300"
+          >
+            <div>
+              <h3 class="font-bold mb-1 text-datascience group-hover:opacity-90 transition-opacity">{app.title}</h3>
+              <p class="text-text-secondary text-sm leading-relaxed">{app.description}</p>
+            </div>
+            <span class="ml-auto text-datascience transition-transform group-hover:translate-x-1 shrink-0 text-xs font-mono">ext →</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <!-- Blog posts -->
+  <section>
+    <h2 class="text-text-muted text-xs font-mono uppercase tracking-widest mb-5">— posts & writeups —</h2>
+
+    {posts.length > 0 ? (
+      <div class="space-y-3">
+        {posts.map(post => (
+          <a
+            href={post.href}
+            class="card flex items-start justify-between gap-4 p-5 border-surface-border hover:border-datascience/50 hover:bg-datascience/5 group transition-all duration-300"
+          >
+            <div>
+              <h3 class="font-bold text-text-primary group-hover:text-datascience transition-colors mb-1">{post.title}</h3>
+              <p class="text-text-secondary text-sm">{post.description}</p>
+              <div class="flex gap-2 mt-2 flex-wrap">
+                {post.tags?.map(tag => (
+                  <span class="tag bg-surface-raised border border-surface-border text-text-muted">{tag}</span>
+                ))}
+              </div>
+            </div>
+            <div class="text-right shrink-0">
+              <span class="text-text-muted text-xs font-mono">{post.date}</span>
+              <div class="text-datascience mt-1 transition-transform group-hover:translate-x-1">→</div>
+            </div>
+          </a>
+        ))}
+      </div>
+    ) : (
+      <div class="text-center py-16 text-text-muted font-mono border border-dashed border-surface-border rounded-xl">
+        <p>Posts coming soon…</p>
+      </div>
+    )}
+  </section>
+</SectionLayout>

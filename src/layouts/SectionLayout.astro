@@ -1,0 +1,51 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  section: 'games' | 'boardgame' | 'datascience' | 'christmas';
+  hero?: {
+    label: string;
+    heading: string;
+    sub: string;
+    color: string;    // e.g. 'games', 'boardgame', etc.
+  };
+}
+
+const { title, description, section, hero } = Astro.props;
+
+const colorMap = {
+  games:       { text: 'text-games',       border: 'border-games',       bg: 'bg-games/10',       glow: 'glow-cyan',   boxGlow: 'box-glow-cyan' },
+  boardgame:   { text: 'text-boardgame',   border: 'border-boardgame',   bg: 'bg-boardgame/10',   glow: 'glow-amber',  boxGlow: 'box-glow-amber' },
+  datascience: { text: 'text-datascience', border: 'border-datascience', bg: 'bg-datascience/10', glow: 'glow-purple', boxGlow: 'box-glow-purple' },
+  christmas:   { text: 'text-christmas',   border: 'border-christmas',   bg: 'bg-christmas/10',   glow: 'glow-red',    boxGlow: 'box-glow-red' },
+};
+
+const c = colorMap[section];
+---
+
+<BaseLayout title={title} description={description} section={section}>
+  {hero && (
+    <section class="relative py-20 px-6 overflow-hidden">
+      <!-- Background glow blob -->
+      <div class={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-10 ${c.bg}`}></div>
+
+      <div class="max-w-5xl mx-auto text-center relative">
+        <span class={`tag ${c.bg} ${c.text} ${c.border} border mb-6 inline-block`}>
+          {hero.label}
+        </span>
+        <h1 class={`pixel-heading text-2xl sm:text-3xl mb-6 ${c.text} ${c.glow}`}>
+          {hero.heading}
+        </h1>
+        <p class="text-text-secondary text-lg max-w-2xl mx-auto leading-relaxed">
+          {hero.sub}
+        </p>
+      </div>
+    </section>
+  )}
+
+  <main class="max-w-6xl mx-auto px-6 pb-20">
+    <slot />
+  </main>
+</BaseLayout>

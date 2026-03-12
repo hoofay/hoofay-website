@@ -1,0 +1,72 @@
+---
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║  TEMPLATE: Data Science Blog Post                               ║
+// ║                                                                  ║
+// ║  HOW TO USE:                                                     ║
+// ║  1. Copy to: src/pages/datascience/blog/MY-POST-SLUG.astro       ║
+// ║  2. Fill in the frontmatter below                                ║
+// ║  3. Write your content in the <article> section                  ║
+// ║  4. Add an entry to the posts array in:                          ║
+// ║     src/pages/datascience/index.astro                            ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+import BlogLayout from '../../../layouts/BlogLayout.astro';
+
+// ── EDIT THESE ──────────────────────────────────────────────────────
+const title       = 'My Post Title';
+const description = 'One sentence summary shown in the post list and meta description.';
+const date        = '2025-01-01';       // YYYY-MM-DD
+const author      = 'hoofay';           // your name
+const tags        = ['python', 'data']; // topic tags (optional)
+const section     = 'datascience';      // keep as datascience for data science posts
+// ────────────────────────────────────────────────────────────────────
+---
+
+<BlogLayout
+  title={title}
+  description={description}
+  date={date}
+  author={author}
+  tags={tags}
+  section={section}
+>
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  Write your post content below using plain HTML.           -->
+  <!--  Headings, paragraphs, lists, code blocks all work.        -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <p>Your introduction paragraph goes here. Tell the reader what this post is about.</p>
+
+  <h2>Section Heading</h2>
+  <p>Body text for this section. You can use <code>inline code</code> for variable names.</p>
+
+  <pre><code>
+# Example code block
+import pandas as pd
+df = pd.read_csv('data.csv')
+print(df.head())
+  </code></pre>
+
+  <h2>Another Section</h2>
+  <p>Keep writing…</p>
+
+  <ul>
+    <li>Bullet point one</li>
+    <li>Bullet point two</li>
+  </ul>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  Embedding a Streamlit app? Use this iframe snippet:       -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!--
+  <div class="my-8 rounded-xl overflow-hidden border border-datascience/30" style="height: 600px;">
+    <iframe
+      src="https://YOUR-APP.streamlit.app/?embedded=true"
+      title="App name"
+      class="w-full h-full border-0"
+      loading="lazy"
+    ></iframe>
+  </div>
+  -->
+</BlogLayout>

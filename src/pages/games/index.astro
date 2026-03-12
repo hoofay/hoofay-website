@@ -1,0 +1,60 @@
+---
+import SectionLayout from '../../layouts/SectionLayout.astro';
+import GameCard from '../../components/GameCard.astro';
+
+// ── ADD NEW GAMES HERE ──────────────────────────────────────────────────────
+// To add a game, copy one of the objects below and fill in the details.
+// The 'href' should link to the game's folder (hosted alongside this site
+// or as a relative path if the game files are in /public/games/).
+const games = [
+  {
+    href:        '/games/game-of-sevens/',
+    title:       'Game of Sevens',
+    description: 'Play the classic game of sevens against the computer.',
+    tags:        ['card game', '1 vs 3 AI'],
+    thumbnail:   '/thumbnails/game-of-sevens.svg',
+    new:         true,
+  },
+  // Add more games below:
+  // {
+  //   href:        '/games/my-new-game',
+  //   title:       'My New Game',
+  //   description: 'Short description of what the game is.',
+  //   tags:        ['puzzle', '1 player'],
+  //   thumbnail:   '/thumbnails/my-new-game.png',  // optional
+  //   new:         false,
+  // },
+];
+// ────────────────────────────────────────────────────────────────────────────
+---
+
+<SectionLayout
+  title="Web Games"
+  description="Browser games made by a 9-year-old — play free, no downloads needed."
+  section="games"
+  hero={{
+    label:   'PLAYER SELECT',
+    heading: 'Web Games',
+    sub:     'Browser games built from scratch. Pick your game, hit play, and see how far you get.',
+    color:   'games',
+  }}
+>
+  {games.length > 0 ? (
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      {games.map(game => (
+        <GameCard
+          href={game.href}
+          title={game.title}
+          description={game.description}
+          tags={game.tags}
+          thumbnail={game.thumbnail}
+          new={game.new}
+        />
+      ))}
+    </div>
+  ) : (
+    <div class="text-center py-20 text-text-muted font-mono">
+      <p>Games loading… check back soon!</p>
+    </div>
+  )}
+</SectionLayout>

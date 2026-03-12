@@ -1,0 +1,32 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+const title       = 'Monster Maker';
+const description = 'Generate your own unique D&D monsters.';
+const streamlitUrl = 'https://monster-maker.streamlit.app/?embedded=true';
+---
+
+<BaseLayout title={title} description={description} section="datascience">
+  <main class="max-w-5xl mx-auto px-6 py-12">
+    <a href="/datascience" class="text-datascience text-sm font-mono hover:opacity-80 transition-opacity mb-8 inline-block">← modelling fun</a>
+
+    <h1 class="text-2xl font-bold text-text-primary mb-2">{title}</h1>
+    <p class="text-text-secondary mb-8">{description}</p>
+
+    <div class="w-full rounded-xl overflow-hidden border border-datascience/30 bg-surface-raised">
+      <iframe
+        src={streamlitUrl}
+        title={title}
+        class="w-full border-0 block"
+        style="height: 85vh; min-height: 600px;"
+        loading="lazy"
+        allow="clipboard-write"
+        scrolling="yes"
+      ></iframe>
+    </div>
+
+    <p class="text-text-muted text-xs font-mono mt-3 text-center">
+      Powered by <a href="https://streamlit.io" class="text-datascience hover:underline" target="_blank" rel="noopener">Streamlit</a>
+    </p>
+  </main>
+</BaseLayout>

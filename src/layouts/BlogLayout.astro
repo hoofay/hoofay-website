@@ -1,0 +1,135 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  date: string;
+  author?: string;
+  tags?: string[];
+  section: 'datascience' | 'christmas' | 'games' | 'boardgame';
+}
+
+const { title, description, date, author = 'hoofay', tags = [], section } = Astro.props;
+
+const colorMap = {
+  games:       'text-games',
+  boardgame:   'text-boardgame',
+  datascience: 'text-datascience',
+  christmas:   'text-christmas',
+};
+const textColor = colorMap[section];
+
+const formattedDate = new Date(date).toLocaleDateString('en-GB', {
+  year: 'numeric', month: 'long', day: 'numeric',
+});
+---
+
+<BaseLayout title={title} description={description} section={section}>
+  <main class="max-w-3xl mx-auto px-6 py-16">
+    <!-- Back link -->
+    <a href={`/${section}`} class={`${textColor} text-sm font-mono hover:opacity-80 transition-opacity mb-8 inline-block`}>
+      ← back
+    </a>
+
+    <!-- Header -->
+    <header class="mb-12">
+      <h1 class="text-3xl sm:text-4xl font-bold text-text-primary leading-tight mb-4">{title}</h1>
+      {description && <p class="text-text-secondary text-lg mb-6">{description}</p>}
+      <div class="flex flex-wrap items-center gap-4 text-sm text-text-muted font-mono border-t border-surface-border pt-4">
+        <span>{formattedDate}</span>
+        <span>·</span>
+        <span>{author}</span>
+        {tags.length > 0 && (
+          <div class="flex gap-2 flex-wrap">
+            {tags.map(tag => (
+              <span class={`tag bg-surface-raised border border-surface-border text-text-secondary`}>{tag}</span>
+            ))}
+          </div>
+        )}
+      </div>
+    </header>
+
+    <!-- Content -->
+    <article class="prose-hoofay">
+      <slot />
+    </article>
+  </main>
+</BaseLayout>
+
+<style>
+  /* Blog prose styles */
+  .prose-hoofay :global(h2) {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin: 2rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-surface-border);
+  }
+  .prose-hoofay :global(h3) {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 1.5rem 0 0.75rem;
+  }
+  .prose-hoofay :global(p) {
+    color: var(--color-text-secondary);
+    line-height: 1.8;
+    margin-bottom: 1.25rem;
+  }
+  .prose-hoofay :global(a) {
+    color: var(--color-games);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .prose-hoofay :global(a:hover) { opacity: 0.8; }
+  .prose-hoofay :global(code) {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    background: var(--color-surface-raised);
+    border: 1px solid var(--color-surface-border);
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.25rem;
+    color: var(--color-games);
+  }
+  .prose-hoofay :global(pre) {
+    background: var(--color-surface-raised);
+    border: 1px solid var(--color-surface-border);
+    border-radius: 0.5rem;
+    padding: 1.25rem;
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+  }
+  .prose-hoofay :global(pre code) {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--color-text-primary);
+  }
+  .prose-hoofay :global(ul), .prose-hoofay :global(ol) {
+    color: var(--color-text-secondary);
+    padding-left: 1.5rem;
+    margin-bottom: 1.25rem;
+    line-height: 1.8;
+  }
+  .prose-hoofay :global(li) { margin-bottom: 0.4rem; }
+  .prose-hoofay :global(blockquote) {
+    border-left: 3px solid var(--color-surface-border);
+    padding-left: 1rem;
+    color: var(--color-text-muted);
+    font-style: italic;
+    margin: 1.5rem 0;
+  }
+  .prose-hoofay :global(img) {
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-surface-border);
+    margin: 1.5rem 0;
+    max-width: 100%;
+  }
+  .prose-hoofay :global(hr) {
+    border: none;
+    border-top: 1px solid var(--color-surface-border);
+    margin: 2rem 0;
+  }
+</style>

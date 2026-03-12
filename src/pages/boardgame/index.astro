@@ -1,0 +1,53 @@
+---
+import SectionLayout from '../../layouts/SectionLayout.astro';
+import ToolCard from '../../components/ToolCard.astro';
+
+// ── ADD NEW BOARD GAME TOOLS HERE ───────────────────────────────────────────
+const tools = [
+  {
+    href:        '/boardgame/dice-roller',
+    title:       'Dice Roller',
+    description: 'Roll any combination of dice — d4, d6, d8, d10, d12, d20 and more.',
+  },
+  {
+    href:        '/boardgame/score-tracker',
+    title:       'Score Tracker',
+    description: 'Track scores for up to 6 players across multiple rounds.',
+  },
+  {
+    href:        '/datascience/tools/monster-maker',
+    title:       'D&D Monster Maker',
+    description: 'Generate balanced stats and suggested actions for a spontaneous D&D 5e monster — powered by ML.',
+  },
+  // Add more tools below:
+  // {
+  //   href:        '/boardgame/my-tool',
+  //   title:       'My Tool',
+  //   description: 'What this tool does.',
+  // },
+];
+// ────────────────────────────────────────────────────────────────────────────
+---
+
+<SectionLayout
+  title="Board Game Tools"
+  description="Digital helpers for analogue game nights — dice, scores, timers and more."
+  section="boardgame"
+  hero={{
+    label:   'ROLL FOR INITIATIVE',
+    heading: 'Board Game Tools',
+    sub:     'Put your phone to work. Digital helpers so you can focus on the strategy, not the maths.',
+    color:   'boardgame',
+  }}
+>
+  <div class="grid sm:grid-cols-2 gap-4">
+    {tools.map(tool => (
+      <ToolCard
+        href={tool.href}
+        title={tool.title}
+        description={tool.description}
+        color="boardgame"
+      />
+    ))}
+  </div>
+</SectionLayout>

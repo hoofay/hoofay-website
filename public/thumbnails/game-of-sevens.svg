@@ -1,0 +1,56 @@
+<svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M20 0L0 0 0 20" fill="none" stroke="rgba(42,42,61,0.4)" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="320" height="180" fill="#0A0A0F"/>
+  <rect width="320" height="180" fill="url(#grid)"/>
+
+  <!-- Cards rendered back-to-front. Fan center: (160, 150) -->
+
+  <!-- Card 1: K♠ at -20° -->
+  <g transform="translate(160,150) rotate(-20) translate(-23,-72)">
+    <rect width="46" height="72" rx="5" fill="#1A1A26" stroke="#2A2A3D" stroke-width="1.5"/>
+    <text x="7" y="18" font-family="monospace" font-size="13" fill="#9090B0" font-weight="bold">K</text>
+    <text x="7" y="34" font-family="monospace" font-size="15" fill="#9090B0">♠</text>
+  </g>
+
+  <!-- Card 5: 8♥ at +20° -->
+  <g transform="translate(160,150) rotate(20) translate(-23,-72)">
+    <rect width="46" height="72" rx="5" fill="#1A1A26" stroke="#2A2A3D" stroke-width="1.5"/>
+    <text x="7" y="18" font-family="monospace" font-size="13" fill="#e53935" font-weight="bold">8</text>
+    <text x="7" y="34" font-family="monospace" font-size="15" fill="#e53935">♥</text>
+  </g>
+
+  <!-- Card 2: 5♥ at -10° -->
+  <g transform="translate(160,150) rotate(-10) translate(-23,-72)">
+    <rect width="46" height="72" rx="5" fill="#1A1A26" stroke="#2A2A3D" stroke-width="1.5"/>
+    <text x="7" y="18" font-family="monospace" font-size="13" fill="#e53935" font-weight="bold">5</text>
+    <text x="7" y="34" font-family="monospace" font-size="15" fill="#e53935">♥</text>
+  </g>
+
+  <!-- Card 4: J♣ at +10° -->
+  <g transform="translate(160,150) rotate(10) translate(-23,-72)">
+    <rect width="46" height="72" rx="5" fill="#1A1A26" stroke="#2A2A3D" stroke-width="1.5"/>
+    <text x="7" y="18" font-family="monospace" font-size="13" fill="#505070" font-weight="bold">J</text>
+    <text x="7" y="34" font-family="monospace" font-size="15" fill="#505070">♣</text>
+  </g>
+
+  <!-- Card 3: 7♦ at 0° — highlighted, rendered last (on top) -->
+  <g transform="translate(160,150) rotate(0) translate(-23,-76)">
+    <!-- Outer glow -->
+    <rect width="46" height="76" rx="5" fill="none" stroke="rgba(0,245,255,0.35)" stroke-width="7"/>
+    <!-- Card face -->
+    <rect width="46" height="76" rx="5" fill="#f8f8f8" stroke="#00F5FF" stroke-width="2"/>
+    <text x="7" y="19" font-family="monospace" font-size="14" fill="#00C4CC" font-weight="bold">7</text>
+    <text x="7" y="36" font-family="monospace" font-size="17" fill="#00C4CC">♦</text>
+    <text x="39" y="68" font-family="monospace" font-size="10" fill="#00C4CC" font-weight="bold" text-anchor="end">7♦</text>
+  </g>
+
+  <!-- Title bar at top -->
+  <text x="160" y="20" font-family="'Courier New', monospace" font-size="9" fill="#00F5FF" text-anchor="middle" font-weight="bold" letter-spacing="2">GAME OF SEVENS</text>
+  <text x="160" y="33" font-family="'Courier New', monospace" font-size="6.5" fill="#505070" text-anchor="middle" letter-spacing="1">YOU vs 3 AI  ·  CARD GAME</text>
+</svg>

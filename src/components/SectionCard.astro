@@ -1,0 +1,89 @@
+---
+interface Props {
+  href: string;
+  label: string;
+  title: string;
+  description: string;
+  color: 'games' | 'boardgame' | 'datascience' | 'christmas';
+  items?: string[];
+}
+
+const { href, label, title, description, color, items = [] } = Astro.props;
+
+const styles = {
+  games: {
+    text:    'text-games',
+    border:  'border-games/30 hover:border-games/70',
+    bg:      'bg-games/5 hover:bg-games/10',
+    tag:     'bg-games/10 text-games border-games/30',
+    glow:    'glow-cyan',
+    boxGlow: 'hover:box-glow-cyan',
+    dot:     'bg-games',
+  },
+  boardgame: {
+    text:    'text-boardgame',
+    border:  'border-boardgame/30 hover:border-boardgame/70',
+    bg:      'bg-boardgame/5 hover:bg-boardgame/10',
+    tag:     'bg-boardgame/10 text-boardgame border-boardgame/30',
+    glow:    'glow-amber',
+    boxGlow: 'hover:box-glow-amber',
+    dot:     'bg-boardgame',
+  },
+  datascience: {
+    text:    'text-datascience',
+    border:  'border-datascience/30 hover:border-datascience/70',
+    bg:      'bg-datascience/5 hover:bg-datascience/10',
+    tag:     'bg-datascience/10 text-datascience border-datascience/30',
+    glow:    'glow-purple',
+    boxGlow: 'hover:box-glow-purple',
+    dot:     'bg-datascience',
+  },
+  christmas: {
+    text:    'text-christmas',
+    border:  'border-christmas/30 hover:border-christmas/70',
+    bg:      'bg-christmas/5 hover:bg-christmas/10',
+    tag:     'bg-christmas/10 text-christmas border-christmas/30',
+    glow:    'glow-red',
+    boxGlow: 'hover:box-glow-red',
+    dot:     'bg-christmas',
+  },
+};
+
+const s = styles[color];
+---
+
+<a
+  href={href}
+  class={`card block p-6 ${s.border} ${s.bg} ${s.boxGlow} group transition-all duration-300`}
+>
+  <!-- Label row -->
+  <div class="mb-4">
+    <span class={`tag ${s.tag} border`}>{label}</span>
+  </div>
+
+  <!-- Title -->
+  <h2 class={`text-xl font-bold mb-2 ${s.text} ${s.glow} group-hover:opacity-90 transition-opacity`}>
+    {title}
+  </h2>
+
+  <!-- Description -->
+  <p class="text-text-secondary text-sm leading-relaxed mb-4">{description}</p>
+
+  <!-- Item list -->
+  {items.length > 0 && (
+    <ul class="space-y-1 mb-4">
+      {items.map(item => (
+        <li class="flex items-center gap-2 text-xs text-text-muted font-mono">
+          <span class={`w-1 h-1 rounded-full ${s.dot} shrink-0`}></span>
+          {item}
+        </li>
+      ))}
+    </ul>
+  )}
+
+  <!-- CTA -->
+  <div class={`flex items-center gap-1 text-sm font-medium ${s.text} mt-2`}>
+    <span>Explore</span>
+    <span class="transition-transform group-hover:translate-x-1">→</span>
+  </div>
+</a>

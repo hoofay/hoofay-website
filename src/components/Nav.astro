@@ -1,0 +1,88 @@
+---
+interface Props {
+  section?: 'games' | 'boardgame' | 'datascience' | 'christmas' | 'home';
+}
+const { section = 'home' } = Astro.props;
+
+const links = [
+  { href: '/games',         label: 'Web Games',       id: 'games',       color: 'hover:text-games',       activeBg: 'bg-games/10 text-games border-games/40' },
+  { href: '/boardgame',     label: 'Board Game Tools', id: 'boardgame',   color: 'hover:text-boardgame',   activeBg: 'bg-boardgame/10 text-boardgame border-boardgame/40' },
+  { href: '/datascience',   label: 'Modelling Fun',    id: 'datascience', color: 'hover:text-datascience', activeBg: 'bg-datascience/10 text-datascience border-datascience/40' },
+  { href: '/christmas',     label: 'Christmas',        id: 'christmas',   color: 'hover:text-christmas',   activeBg: 'bg-christmas/10 text-christmas border-christmas/40' },
+];
+---
+
+<header class="sticky top-0 z-50 border-b border-surface-border bg-surface/80 backdrop-blur-md">
+  <nav class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <!-- Logo -->
+    <a href="/" class="flex items-center gap-2 group" aria-label="hoofay home">
+      <span class="pixel-heading text-sm text-games glow-cyan animate-flicker group-hover:opacity-80 transition-opacity">
+        hoofay
+      </span>
+      <span class="text-text-muted text-xs font-mono">.com</span>
+    </a>
+
+    <!-- Desktop links -->
+    <ul class="hidden md:flex items-center gap-1" role="list">
+      {links.map(link => (
+        <li>
+          <a
+            href={link.href}
+            class={`px-3 py-1.5 rounded-md text-sm font-medium border transition-all duration-200 ${
+              section === link.id
+                ? `${link.activeBg} border`
+                : `text-text-secondary border-transparent ${link.color}`
+            }`}
+          >
+            {link.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    <!-- Mobile hamburger -->
+    <button
+      id="nav-toggle"
+      aria-label="Toggle menu"
+      aria-expanded="false"
+      class="md:hidden p-2 text-text-secondary hover:text-text-primary transition-colors"
+    >
+      <svg id="icon-open"  width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6"  x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <svg id="icon-close" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </nav>
+
+  <!-- Mobile menu -->
+  <div id="mobile-menu" class="hidden md:hidden border-t border-surface-border bg-surface-raised">
+    <ul class="max-w-6xl mx-auto px-6 py-3 flex flex-col gap-1" role="list">
+      {links.map(link => (
+        <li>
+          <a
+            href={link.href}
+            class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              section === link.id
+                ? link.activeBg + ' border'
+                : `text-text-secondary border border-transparent ${link.color}`
+            }`}
+          >
+            {link.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+</header>
+
+<script>
+  const toggle  = document.getElementById('nav-toggle');
+  const menu    = document.getElementById('mobile-menu');
+  const iconOpen  = document.getElementById('icon-open');
+  const iconClose = document.getElementById('icon-close');
+
+  toggle?.addEventListener('click', () => {
+    const isOpen = menu?.classList.toggle('hidden') === false;
+    toggle.setAttribute('aria-expanded', String(isOpen));
+    iconOpen?.classList.toggle('hidden', isOpen);
+    iconClose?.classList.toggle('hidden', !isOpen);
+  });
+</script>

@@ -1,0 +1,16 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-surface-border mt-20">
+  <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-text-muted text-sm font-mono">
+    <span class="text-games/60 pixel-heading text-xs glow-cyan">hoofay.com</span>
+    <div class="flex gap-6">
+      <a href="/games"       class="hover:text-games       transition-colors">games</a>
+      <a href="/boardgame"   class="hover:text-boardgame   transition-colors">board games</a>
+      <a href="/datascience" class="hover:text-datascience transition-colors">modelling fun</a>
+      <a href="/christmas"   class="hover:text-christmas   transition-colors">christmas</a>
+    </div>
+    <span>© {year}</span>
+  </div>
+</footer>

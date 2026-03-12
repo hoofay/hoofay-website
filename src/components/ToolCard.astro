@@ -1,0 +1,30 @@
+---
+interface Props {
+  href: string;
+  title: string;
+  description: string;
+  color?: 'boardgame' | 'datascience' | 'christmas' | 'games';
+}
+
+const { href, title, description, color = 'boardgame' } = Astro.props;
+
+const styles = {
+  boardgame:   { text: 'text-boardgame',   border: 'hover:border-boardgame/60',   bg: 'hover:bg-boardgame/5',   glow: 'hover:box-glow-amber' },
+  datascience: { text: 'text-datascience', border: 'hover:border-datascience/60', bg: 'hover:bg-datascience/5', glow: 'hover:box-glow-purple' },
+  christmas:   { text: 'text-christmas',   border: 'hover:border-christmas/60',   bg: 'hover:bg-christmas/5',   glow: 'hover:box-glow-red' },
+  games:       { text: 'text-games',       border: 'hover:border-games/60',       bg: 'hover:bg-games/5',       glow: 'hover:box-glow-cyan' },
+};
+
+const s = styles[color];
+---
+
+<a
+  href={href}
+  class={`card flex items-start gap-4 p-5 border-surface-border ${s.border} ${s.bg} ${s.glow} group transition-all duration-300`}
+>
+  <div>
+    <h3 class={`font-bold mb-1 ${s.text} group-hover:opacity-90 transition-opacity`}>{title}</h3>
+    <p class="text-text-secondary text-sm leading-relaxed">{description}</p>
+  </div>
+  <span class={`ml-auto ${s.text} transition-transform group-hover:translate-x-1 shrink-0`}>→</span>
+</a>

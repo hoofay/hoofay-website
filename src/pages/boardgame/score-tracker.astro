@@ -1,0 +1,166 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Score Tracker" description="Track scores for up to 6 players across multiple rounds." section="boardgame">
+  <main class="max-w-3xl mx-auto px-6 py-12">
+    <a href="/boardgame" class="text-boardgame text-sm font-mono hover:opacity-80 transition-opacity mb-8 inline-block">← back</a>
+
+    <h1 class="pixel-heading text-xl text-boardgame glow-amber mb-2">Score Tracker</h1>
+    <p class="text-text-secondary mb-10">Set up your players, then add scores each round.</p>
+
+    <!-- Setup -->
+    <section id="setup-section" class="mb-8">
+      <h2 class="text-text-muted text-xs font-mono uppercase tracking-widest mb-4">Players</h2>
+      <div id="player-inputs" class="space-y-2 mb-4">
+        <input type="text" class="player-input w-full bg-surface-raised border border-surface-border rounded-lg px-4 py-2 text-text-primary font-mono text-sm focus:border-boardgame/60 focus:outline-none transition-colors" placeholder="Player 1 name" />
+        <input type="text" class="player-input w-full bg-surface-raised border border-surface-border rounded-lg px-4 py-2 text-text-primary font-mono text-sm focus:border-boardgame/60 focus:outline-none transition-colors" placeholder="Player 2 name" />
+      </div>
+      <div class="flex gap-3 flex-wrap">
+        <button id="add-player-btn" class="px-4 py-2 rounded-lg border border-surface-border text-text-secondary hover:border-boardgame/50 hover:text-boardgame transition-all text-sm font-mono">
+          + Add player
+        </button>
+        <button id="start-btn" class="px-6 py-2 rounded-lg bg-boardgame/10 border border-boardgame/40 text-boardgame hover:bg-boardgame/20 transition-all text-sm font-medium">
+          Start Game →
+        </button>
+      </div>
+    </section>
+
+    <!-- Scoreboard -->
+    <section id="game-section" class="hidden">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-text-muted text-xs font-mono uppercase tracking-widest">Scoreboard</h2>
+        <div class="flex gap-2">
+          <span id="round-label" class="text-text-muted font-mono text-xs">Round 1</span>
+          <button id="reset-btn" class="text-text-muted hover:text-christmas text-xs font-mono hover:underline transition-colors">Reset</button>
+        </div>
+      </div>
+
+      <!-- Player score table -->
+      <div id="scoreboard" class="space-y-2 mb-8"></div>
+
+      <!-- Add round scores -->
+      <div class="border border-boardgame/20 bg-boardgame/5 rounded-xl p-5">
+        <h3 class="text-boardgame font-mono text-sm mb-4">Add Round Scores</h3>
+        <div id="round-inputs" class="space-y-2 mb-4"></div>
+        <button id="add-round-btn" class="px-6 py-2 rounded-lg bg-boardgame text-surface font-bold hover:opacity-90 active:scale-95 transition-all">
+          Add Round
+        </button>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<script>
+  interface Player {
+    name: string;
+    scores: number[];
+  }
+
+  let players: Player[] = [];
+  let round = 1;
+
+  const setupSection = document.getElementById('setup-section')!;
+  const gameSection  = document.getElementById('game-section')!;
+  const scoreboard   = document.getElementById('scoreboard')!;
+  const roundInputs  = document.getElementById('round-inputs')!;
+  const roundLabel   = document.getElementById('round-label')!;
+
+  // Add player input
+  document.getElementById('add-player-btn')!.addEventListener('click', () => {
+    const inputs = document.getElementById('player-inputs')!;
+    const count  = inputs.querySelectorAll('input').length + 1;
+    if (count > 6) return;
+    const input = document.createElement('input');
+    input.type        = 'text';
+    input.className   = 'player-input w-full bg-surface-raised border border-surface-border rounded-lg px-4 py-2 text-text-primary font-mono text-sm focus:border-boardgame/60 focus:outline-none transition-colors';
+    input.placeholder = `Player ${count} name`;
+    inputs.appendChild(input);
+  });
+
+  // Start game
+  document.getElementById('start-btn')!.addEventListener('click', () => {
+    const inputs = document.querySelectorAll<HTMLInputElement>('.player-input');
+    const names  = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
+    if (names.length < 2) { alert('Please enter at least 2 player names.'); return; }
+
+    players = names.map(name => ({ name, scores: [] }));
+    round   = 1;
+    setupSection.classList.add('hidden');
+    gameSection.classList.remove('hidden');
+    renderScoreboard();
+    renderRoundInputs();
+  });
+
+  function total(p: Player) {
+    return p.scores.reduce((s, v) => s + v, 0);
+  }
+
+  function renderScoreboard() {
+    roundLabel.textContent = `Round ${round}`;
+    const sorted = [...players].sort((a, b) => total(b) - total(a));
+
+    scoreboard.innerHTML = sorted.map((p, rank) => {
+      const isLeader = rank === 0 && round > 1;
+      return `
+        <div class="flex items-center justify-between px-4 py-3 rounded-lg ${isLeader ? 'bg-boardgame/10 border border-boardgame/30' : 'bg-surface-raised border border-surface-border'}">
+          <div class="flex items-center gap-3">
+            <span class="text-text-muted font-mono text-xs w-4">${rank + 1}</span>
+            <span class="${isLeader ? 'text-boardgame font-bold' : 'text-text-primary'} font-medium">${p.name}</span>
+            ${isLeader ? '<span class="text-xs font-mono text-boardgame/60">leading</span>' : ''}
+          </div>
+          <span class="${isLeader ? 'text-boardgame text-xl font-bold' : 'text-text-primary text-lg font-bold'}">${total(p)}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderRoundInputs() {
+    roundInputs.innerHTML = players.map((p, i) => `
+      <div class="flex items-center gap-2 flex-wrap">
+        <label class="text-text-secondary text-sm w-28 truncate shrink-0">${p.name}</label>
+        <input
+          type="number"
+          id="round-input-${i}"
+          class="w-20 bg-surface-raised border border-surface-border rounded-lg px-3 py-1.5 text-text-primary font-mono text-sm focus:border-boardgame/60 focus:outline-none transition-colors text-center"
+          placeholder="0"
+        />
+        <div class="flex gap-1">
+          <button data-player="${i}" data-delta="1"   class="quick-btn px-2 py-1.5 rounded text-xs font-mono border border-surface-border text-text-muted hover:border-boardgame/50 hover:text-boardgame transition-colors">+1</button>
+          <button data-player="${i}" data-delta="5"   class="quick-btn px-2 py-1.5 rounded text-xs font-mono border border-surface-border text-text-muted hover:border-boardgame/50 hover:text-boardgame transition-colors">+5</button>
+          <button data-player="${i}" data-delta="10"  class="quick-btn px-2 py-1.5 rounded text-xs font-mono border border-surface-border text-text-muted hover:border-boardgame/50 hover:text-boardgame transition-colors">+10</button>
+          <button data-player="${i}" data-delta="-1"  class="quick-btn px-2 py-1.5 rounded text-xs font-mono border border-surface-border text-text-muted hover:border-red-500/50 hover:text-red-400 transition-colors">-1</button>
+          <button data-player="${i}" data-delta="-5"  class="quick-btn px-2 py-1.5 rounded text-xs font-mono border border-surface-border text-text-muted hover:border-red-500/50 hover:text-red-400 transition-colors">-5</button>
+          <button data-player="${i}" data-delta="-10" class="quick-btn px-2 py-1.5 rounded text-xs font-mono border border-surface-border text-text-muted hover:border-red-500/50 hover:text-red-400 transition-colors">-10</button>
+        </div>
+      </div>
+    `).join('');
+
+    // Wire up quick buttons
+    roundInputs.querySelectorAll<HTMLButtonElement>('.quick-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const playerIdx = parseInt(btn.dataset.player!);
+        const delta     = parseInt(btn.dataset.delta!);
+        const input     = document.getElementById(`round-input-${playerIdx}`) as HTMLInputElement;
+        const current   = parseInt(input.value) || 0;
+        input.value     = String(current + delta);
+      });
+    });
+  }
+
+  document.getElementById('add-round-btn')!.addEventListener('click', () => {
+    players.forEach((p, i) => {
+      const val = parseInt((document.getElementById(`round-input-${i}`) as HTMLInputElement).value) || 0;
+      p.scores.push(val);
+    });
+    round++;
+    renderScoreboard();
+    renderRoundInputs();
+  });
+
+  document.getElementById('reset-btn')!.addEventListener('click', () => {
+    if (!confirm('Reset the game? All scores will be lost.')) return;
+    setupSection.classList.remove('hidden');
+    gameSection.classList.add('hidden');
+  });
+</script>

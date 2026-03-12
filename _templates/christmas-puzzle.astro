@@ -1,0 +1,122 @@
+---
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║  TEMPLATE: Christmas Puzzle Page                                ║
+// ║                                                                  ║
+// ║  HOW TO USE:                                                     ║
+// ║  1. Copy to: src/pages/christmas/YYYY/puzzle-N.astro             ║
+// ║     e.g.  src/pages/christmas/2025/puzzle-1.astro                ║
+// ║  2. Create the year index at: src/pages/christmas/YYYY/index.astro║
+// ║     (copy christmas-hunt-index.astro template)                   ║
+// ║  3. Fill in the puzzle details below                             ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+// ── EDIT THESE ──────────────────────────────────────────────────────
+const puzzleNumber  = 1;
+const puzzleTitle   = 'Puzzle One';
+const year          = '2025';
+const totalPuzzles  = 10;
+
+// The clue text — plain text or HTML
+const clueText = `Your puzzle clue goes here. It can be as long as you like.
+Use line breaks to format it nicely.`;
+
+// The answer — this is hashed so it's not visible in source
+// Use the SHA-256 of the lowercase trimmed answer.
+// e.g. if answer is "snowflake" → sha256("snowflake")
+// Generate at: https://emn178.github.io/online-tools/sha256.html
+const answerHash    = 'REPLACE_WITH_SHA256_OF_ANSWER';
+
+// Where to send the solver once they get it right
+const nextPuzzleUrl = `/christmas/${year}/puzzle-2`;
+// ────────────────────────────────────────────────────────────────────
+---
+
+<BaseLayout title={`Puzzle ${puzzleNumber} — Christmas ${year}`} section="christmas">
+  <main class="max-w-2xl mx-auto px-6 py-12">
+    <!-- Breadcrumb -->
+    <a href={`/christmas/${year}`} class="text-christmas text-sm font-mono hover:opacity-80 transition-opacity mb-8 inline-block">
+      ← Hunt {year}
+    </a>
+
+    <!-- Puzzle header -->
+    <div class="mb-8">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="tag bg-christmas/10 text-christmas border border-christmas/30">
+          {puzzleNumber} / {totalPuzzles}
+        </span>
+        <span class="text-text-muted font-mono text-xs">Christmas {year}</span>
+      </div>
+      <h1 class="pixel-heading text-lg text-christmas glow-red">{puzzleTitle}</h1>
+    </div>
+
+    <!-- Clue box -->
+    <div class="p-6 rounded-xl border border-christmas/30 bg-christmas/5 mb-8 relative scanlines overflow-hidden">
+      <div class="text-text-primary leading-relaxed whitespace-pre-line">{clueText}</div>
+    </div>
+
+    <!-- Answer input -->
+    <div id="answer-section">
+      <label class="block text-text-secondary text-sm font-mono mb-2">Your answer:</label>
+      <div class="flex gap-3">
+        <input
+          type="text"
+          id="answer-input"
+          class="flex-1 bg-surface-raised border border-surface-border rounded-lg px-4 py-2.5 text-text-primary font-mono focus:border-christmas/60 focus:outline-none transition-colors"
+          placeholder="Type your answer…"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+        />
+        <button
+          id="check-btn"
+          class="px-5 py-2.5 rounded-lg bg-christmas/10 text-christmas border border-christmas/40 hover:bg-christmas/20 transition-all font-medium"
+        >
+          Check →
+        </button>
+      </div>
+      <p id="feedback" class="mt-3 text-sm font-mono hidden"></p>
+    </div>
+
+    <!-- Success (hidden until correct) -->
+    <div id="success" class="hidden p-6 rounded-xl border border-christmas/40 bg-christmas/10 text-center mt-6">
+      <p class="text-3xl mb-3">🎄</p>
+      <p class="text-christmas font-bold text-lg mb-2">Correct!</p>
+      <p class="text-text-secondary text-sm mb-5">Well done — on to the next one!</p>
+      <a
+        href={nextPuzzleUrl}
+        class="inline-block px-6 py-2.5 rounded-lg bg-christmas text-white font-bold hover:opacity-90 transition-all"
+      >
+        Next puzzle →
+      </a>
+    </div>
+  </main>
+</BaseLayout>
+
+<script define:vars={{ answerHash, nextPuzzleUrl }}>
+  async function sha256(str) {
+    const buf    = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  document.getElementById('check-btn').addEventListener('click', async () => {
+    const input    = document.getElementById('answer-input').value.trim().toLowerCase();
+    const hash     = await sha256(input);
+    const feedback = document.getElementById('feedback');
+    const success  = document.getElementById('success');
+
+    if (hash === answerHash) {
+      document.getElementById('answer-section').classList.add('hidden');
+      success.classList.remove('hidden');
+    } else {
+      feedback.textContent = '✗ Not quite — try again!';
+      feedback.className   = 'mt-3 text-sm font-mono text-christmas';
+      feedback.classList.remove('hidden');
+    }
+  });
+
+  document.getElementById('answer-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('check-btn').click();
+  });
+</script>

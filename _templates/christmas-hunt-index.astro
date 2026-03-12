@@ -1,0 +1,64 @@
+---
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║  TEMPLATE: Christmas Hunt Year Index                            ║
+// ║                                                                  ║
+// ║  HOW TO USE:                                                     ║
+// ║  1. Copy to: src/pages/christmas/YYYY/index.astro                ║
+// ║  2. Fill in the year and puzzle list below                       ║
+// ║  3. Add an entry to the hunts array in:                          ║
+// ║     src/pages/christmas/index.astro                              ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+// ── EDIT THESE ──────────────────────────────────────────────────────
+const year = '2025';
+
+const puzzles = [
+  { number: 1,  title: 'Puzzle One',   href: `/christmas/${year}/puzzle-1`, unlocked: true },
+  { number: 2,  title: 'Puzzle Two',   href: `/christmas/${year}/puzzle-2`, unlocked: false },
+  // Add more puzzles here...
+];
+
+const intro = `Welcome to the ${year} hoofay Christmas hunt! Work through the puzzles in order.
+Each answer unlocks the next clue. Good luck — you'll need it. 🎅`;
+// ────────────────────────────────────────────────────────────────────
+---
+
+<BaseLayout title={`Christmas Hunt ${year}`} section="christmas">
+  <main class="max-w-2xl mx-auto px-6 py-12">
+    <a href="/christmas" class="text-christmas text-sm font-mono hover:opacity-80 mb-8 inline-block">← all hunts</a>
+
+    <div class="mb-3 flex items-center gap-3">
+      <span class="tag bg-christmas/10 text-christmas border border-christmas/30">🎄 {year}</span>
+    </div>
+    <h1 class="pixel-heading text-xl text-christmas glow-red mb-6">Christmas Hunt {year}</h1>
+    <p class="text-text-secondary leading-relaxed mb-10 whitespace-pre-line">{intro}</p>
+
+    <!-- Puzzle list -->
+    <div class="space-y-3">
+      {puzzles.map(puzzle => (
+        puzzle.unlocked ? (
+          <a
+            href={puzzle.href}
+            class="card flex items-center justify-between px-5 py-4 border-christmas/20 hover:border-christmas/60 hover:bg-christmas/5 group transition-all duration-300"
+          >
+            <div class="flex items-center gap-4">
+              <span class="text-christmas font-mono font-bold w-6">{puzzle.number}</span>
+              <span class="text-text-primary font-medium group-hover:text-christmas transition-colors">{puzzle.title}</span>
+            </div>
+            <span class="text-christmas transition-transform group-hover:translate-x-1">→</span>
+          </a>
+        ) : (
+          <div class="card flex items-center justify-between px-5 py-4 border-surface-border opacity-40 cursor-not-allowed">
+            <div class="flex items-center gap-4">
+              <span class="text-text-muted font-mono font-bold w-6">{puzzle.number}</span>
+              <span class="text-text-muted">{puzzle.title}</span>
+            </div>
+            <span class="text-text-muted text-sm">🔒</span>
+          </div>
+        )
+      ))}
+    </div>
+  </main>
+</BaseLayout>

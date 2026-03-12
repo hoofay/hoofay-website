@@ -1,0 +1,89 @@
+---
+import SectionLayout from '../../layouts/SectionLayout.astro';
+
+// ── CHRISTMAS HUNTS ──────────────────────────────────────────────────────────
+// Each year gets its own entry. Puzzles live as pages under /christmas/[year]/
+// To add a new year's hunt, see _templates/christmas-puzzle.astro
+const hunts = [
+  // {
+  //   year:        '2025',
+  //   href:        '/christmas/2025',
+  //   description: 'Ten puzzles, one prize. Good luck.',
+  //   active:      true,   // shows as 'LIVE' badge
+  // },
+];
+// ────────────────────────────────────────────────────────────────────────────
+
+// ── PREVIOUS WINNERS ─────────────────────────────────────────────────────────
+const winners = [
+  { year: '2023', name: 'Alex and Caitlin' },
+  { year: '2024', name: 'JoJo' },
+  { year: '2025', name: 'Chris and Charlotte' },
+];
+// ────────────────────────────────────────────────────────────────────────────
+
+const currentMonth = new Date().getMonth() + 1; // 1–12
+const isDecember   = currentMonth === 12;
+---
+
+<SectionLayout
+  title="Christmas"
+  description="The annual hoofay Christmas puzzle hunt — riddles, ciphers, and festive chaos."
+  section="christmas"
+  hero={{
+    label:   'HO HO HO',
+    heading: 'Christmas',
+    sub:     'The annual puzzle hunt. Gather the family, sharpen your minds, and good luck.',
+    color:   'christmas',
+  }}
+>
+  {isDecember && (
+    <div class="mb-10 p-4 rounded-lg bg-christmas/10 border border-christmas/30 text-center">
+      <p class="text-christmas font-mono text-sm animate-glow-pulse">
+        It's December — the hunt is (nearly) afoot!
+      </p>
+    </div>
+  )}
+
+  <!-- Previous Winners -->
+  {winners.length > 0 && (
+    <section class="mb-14">
+      <h2 class="text-text-muted text-xs font-mono uppercase tracking-widest mb-5">— previous winners —</h2>
+      <div class="space-y-2">
+        {winners.map((w, i) => (
+          <div class="flex items-center justify-between px-5 py-3 rounded-lg bg-surface-raised border border-surface-border">
+            <span class="text-text-muted font-mono text-sm">{w.year}</span>
+            <span class="text-christmas font-medium">{w.name}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  {hunts.length > 0 ? (
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      {hunts.map(hunt => (
+        <a
+          href={hunt.href}
+          class="card p-6 border-christmas/20 hover:border-christmas/60 hover:bg-christmas/5 hover:box-glow-red group transition-all duration-300"
+        >
+          <div class="flex items-start justify-between mb-3">
+            {hunt.active && (
+              <span class="tag bg-christmas/10 text-christmas border border-christmas/30 animate-glow-pulse">LIVE</span>
+            )}
+          </div>
+          <h3 class="text-xl font-bold text-christmas mb-2 glow-red">Hunt {hunt.year}</h3>
+          <p class="text-text-secondary text-sm">{hunt.description}</p>
+          <div class="flex items-center gap-1 text-christmas text-sm mt-4">
+            <span>Enter</span>
+            <span class="transition-transform group-hover:translate-x-1">→</span>
+          </div>
+        </a>
+      ))}
+    </div>
+  ) : (
+    <div class="text-center py-20 border border-dashed border-surface-border rounded-xl">
+      <p class="text-text-muted font-mono text-sm">No hunts yet — check back in December!</p>
+    </div>
+  )}
+</SectionLayout>

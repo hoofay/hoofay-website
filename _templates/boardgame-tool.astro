@@ -1,0 +1,42 @@
+---
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║  TEMPLATE: New Board Game Tool                                  ║
+// ║                                                                  ║
+// ║  HOW TO USE:                                                     ║
+// ║  1. Copy to: src/pages/boardgame/YOUR-TOOL-NAME.astro            ║
+// ║  2. Fill in the title/description                                ║
+// ║  3. Build your tool in the <main> section below                  ║
+// ║  4. Add an entry to the tools array in:                          ║
+// ║     src/pages/boardgame/index.astro                              ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+// ── EDIT THESE ──────────────────────────────────────────────────────
+const title       = 'My Tool Name';
+const description = 'What this tool does.';
+// ────────────────────────────────────────────────────────────────────
+---
+
+<BaseLayout title={title} description={description} section="boardgame">
+  <main class="max-w-2xl mx-auto px-6 py-12">
+    <a href="/boardgame" class="text-boardgame text-sm font-mono hover:opacity-80 transition-opacity mb-8 inline-block">← back</a>
+
+    <h1 class="pixel-heading text-xl text-boardgame glow-amber mb-2">{title}</h1>
+    <p class="text-text-secondary mb-10">{description}</p>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  Build your tool UI here.                                  <!--
+    <!--  Use Tailwind classes for styling.                         <!--
+    <!--  Put JavaScript logic in the <script> tag below.          <!--
+    <!-- ═══════════════════════════════════════════════════════════ -->
+
+    <div class="border border-boardgame/20 bg-boardgame/5 rounded-xl p-6">
+      <p class="text-text-muted font-mono text-sm">Tool UI goes here…</p>
+    </div>
+  </main>
+</BaseLayout>
+
+<script>
+  // Your tool's JavaScript goes here
+</script>

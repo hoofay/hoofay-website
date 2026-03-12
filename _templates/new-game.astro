@@ -1,0 +1,51 @@
+---
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  TEMPLATE: New Web Game Page                                 ║
+// ║                                                              ║
+// ║  HOW TO USE:                                                 ║
+// ║  1. Copy this file to: src/pages/games/YOUR-GAME-NAME.astro  ║
+// ║  2. Fill in the details in the Props section below           ║
+// ║  3. Add an entry to the games array in:                      ║
+// ║     src/pages/games/index.astro                              ║
+// ║  4. Put the game's HTML/JS files in:                         ║
+// ║     public/games/YOUR-GAME-NAME/                             ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+// ── EDIT THESE ──────────────────────────────────────────────────
+const title       = 'My Game Title';
+const description = 'Short description shown in the browser tab and on the games list.';
+const gamePath    = '/games/my-game-name/index.html'; // path inside /public/
+// ────────────────────────────────────────────────────────────────
+---
+
+<BaseLayout title={title} description={description} section="games">
+  <main class="max-w-4xl mx-auto px-6 py-8">
+    <a href="/games" class="text-games text-sm font-mono hover:opacity-80 transition-opacity mb-6 inline-block">← all games</a>
+
+    <h1 class="pixel-heading text-xl text-games glow-cyan mb-2">{title}</h1>
+    <p class="text-text-secondary mb-8">{description}</p>
+
+    <!-- Game iframe — the game runs inside this box -->
+    <div class="relative w-full rounded-xl overflow-hidden border border-games/30 bg-surface-raised"
+         style="aspect-ratio: 16/9;">
+      <iframe
+        src={gamePath}
+        title={title}
+        class="absolute inset-0 w-full h-full border-0"
+        allowfullscreen
+        loading="lazy"
+      ></iframe>
+    </div>
+
+    <!-- Optional: instructions / tips below the game -->
+    <section class="mt-8 p-5 rounded-xl border border-surface-border bg-surface-raised">
+      <h2 class="text-text-primary font-bold mb-3">How to play</h2>
+      <ul class="text-text-secondary text-sm space-y-1 list-disc list-inside">
+        <li>Add your instructions here</li>
+        <li>One tip per line</li>
+      </ul>
+    </section>
+  </main>
+</BaseLayout>
