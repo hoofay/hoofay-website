@@ -725,12 +725,16 @@
     // Human picks a face-down card from prevPlayer's hand
     if (!picking || over) return;
 
+    const stolenFrom = prevPlayer;
     stealFromPrev(0);
     picking = false;
 
     renderHand();
     renderBoard();
     updateBadges();
+
+    // The stolen-from player might now have 0 cards → they win
+    if (checkWin(stolenFrom)) return;
 
     nextTurn();
   }
@@ -758,10 +762,14 @@
       if (checkWin(p)) return;
     } else {
       // Can't play — steal from prevPlayer
-      const prevName = NAMES[prevPlayer];
+      const stolenFrom = prevPlayer;
+      const prevName = NAMES[stolenFrom];
       stealFromPrev(p);
       updateBadges();
       setStatus(`${EMOJIS[p]} ${NAMES[p]} can't play — steals a card from ${prevName}!`);
+
+      // The stolen-from player might now have 0 cards → they win
+      if (checkWin(stolenFrom)) return;
     }
 
     nextTurn();
