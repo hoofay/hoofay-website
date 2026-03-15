@@ -1,0 +1,1240 @@
+---
+// Standalone game page — no site layout.
+// <style is:global> prevents Astro from scoping CSS selectors, which would
+// break classes added dynamically by renderDice() and renderOdds().
+// <script is:inline> keeps game functions in global scope for onclick handlers.
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Perudo Cup | hoofay.com</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style is:global>
+    /* ── Design tokens (matching hoofay.com) ── */
+    :root {
+      --color-games:          #00F5FF;
+      --color-games-dim:      #00C4CC;
+      --color-surface:        #0A0A0F;
+      --color-surface-raised: #12121A;
+      --color-surface-card:   #1A1A26;
+      --color-surface-border: #2A2A3D;
+      --color-text-primary:   #F0F0FF;
+      --color-text-secondary: #9090B0;
+      --color-text-muted:     #505070;
+      --color-amber:          #FFB700;
+      --font-sans:  'Inter', system-ui, sans-serif;
+      --font-pixel: 'Press Start 2P', monospace;
+      --font-mono:  'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--color-surface);
+      color: var(--color-text-primary);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Subtle grid overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(42,42,61,0.35) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(42,42,61,0.35) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body > * { position: relative; z-index: 1; }
+
+    /* ── Nav bar ── */
+    #site-nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      width: 100%;
+      border-bottom: 1px solid var(--color-surface-border);
+      background: rgba(10,10,15,0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    #site-nav .nav-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #site-nav .logo {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+
+    #site-nav .logo-word {
+      font-family: var(--font-pixel);
+      font-size: 0.75rem;
+      color: var(--color-games);
+      text-shadow: 0 0 12px rgba(0,245,255,0.6);
+      letter-spacing: 0.05em;
+      line-height: 1.6;
+      animation: flicker 4s linear infinite;
+    }
+
+    #site-nav .logo-tld {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+
+    #site-nav .back-link {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    #site-nav .back-link:hover {
+      color: var(--color-games);
+      border-color: rgba(0,245,255,0.3);
+    }
+
+    @keyframes flicker {
+      0%, 95%, 100% { opacity: 1; }
+      96%           { opacity: 0.8; }
+      97%           { opacity: 1; }
+      98%           { opacity: 0.6; }
+      99%           { opacity: 1; }
+    }
+
+    /* ═══════════════════════════════════════
+       SETUP SCREEN
+    ═══════════════════════════════════════ */
+    #setup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 64px);
+      width: 100%;
+      max-width: 380px;
+      padding: 30px 20px;
+      gap: 28px;
+    }
+
+    .game-title {
+      font-family: var(--font-pixel);
+      font-size: clamp(1rem, 5vw, 1.4rem);
+      color: var(--color-games);
+      text-shadow: 0 0 16px rgba(0,245,255,0.6);
+      letter-spacing: 0.05em;
+      text-align: center;
+      line-height: 1.8;
+    }
+
+    .setup-sub {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--color-text-secondary);
+      text-align: center;
+    }
+
+    .setup-card {
+      width: 100%;
+      background: var(--color-surface-raised);
+      border: 1px solid var(--color-surface-border);
+      border-radius: 14px;
+      padding: 26px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .setup-q {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--color-text-secondary);
+    }
+
+    .counter-row {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+    }
+
+    .cnt-btn {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      border: 1px solid var(--color-surface-border);
+      background: transparent;
+      color: var(--color-games);
+      font-size: 1.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .cnt-btn:hover {
+      border-color: var(--color-games);
+      box-shadow: 0 0 12px rgba(0,245,255,0.3);
+    }
+
+    .cnt-val {
+      font-family: var(--font-pixel);
+      font-size: 2.8rem;
+      color: var(--color-amber);
+      min-width: 64px;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .total-hint {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+
+    .big-btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid var(--color-games);
+      background: transparent;
+      color: var(--color-games);
+      font-family: var(--font-pixel);
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      line-height: 1.8;
+      cursor: pointer;
+      touch-action: manipulation;
+      box-shadow: 0 0 16px rgba(0,245,255,0.15);
+      transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+    }
+
+    .big-btn:hover {
+      background: rgba(0,245,255,0.08);
+      box-shadow: 0 0 28px rgba(0,245,255,0.35);
+      transform: translateY(-2px);
+    }
+
+    .big-btn:active { transform: translateY(1px); }
+
+    /* ═══════════════════════════════════════
+       GAME SCREEN
+    ═══════════════════════════════════════ */
+    #game {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 420px;
+      padding: 10px 14px 32px;
+      gap: 10px;
+    }
+
+    /* ── Info strip ── */
+    .info-strip {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      background: var(--color-surface-raised);
+      border: 1px solid var(--color-surface-border);
+      border-radius: 13px;
+      padding: 11px 16px;
+    }
+
+    .info-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .info-lbl {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--color-text-muted);
+    }
+
+    .info-val {
+      font-family: var(--font-pixel);
+      font-size: 1.3rem;
+      color: var(--color-amber);
+      line-height: 1;
+    }
+
+    /* ── Palafico toggle ── */
+    .pal-block {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+    }
+
+    .tog-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .tog-state {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      min-width: 18px;
+      text-align: right;
+    }
+
+    .tog {
+      position: relative;
+      width: 46px;
+      height: 26px;
+      cursor: pointer;
+    }
+
+    .tog input { opacity: 0; width: 0; height: 0; position: absolute; }
+
+    .tog-track {
+      position: absolute;
+      inset: 0;
+      background: var(--color-surface-card);
+      border: 1.5px solid var(--color-surface-border);
+      border-radius: 26px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .tog-thumb {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      top: 3px;
+      left: 3px;
+      background: var(--color-surface-border);
+      border-radius: 50%;
+      transition: left 0.2s, background 0.2s;
+    }
+
+    .tog input:checked ~ .tog-track {
+      background: rgba(0,245,255,0.15);
+      border-color: var(--color-games);
+    }
+
+    .tog input:checked ~ .tog-thumb {
+      left: 24px;
+      background: var(--color-games);
+    }
+
+    /* ── Cup ── */
+    .cup-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      padding: 2px 0;
+    }
+
+    .cup {
+      width: 144px;
+      height: 168px;
+      background: linear-gradient(148deg, #1a1a2e 0%, #12121a 45%, #0a0a0f 100%);
+      border-radius: 14px 14px 34px 34px;
+      border-top: 2px solid rgba(0,245,255,0.5);
+      border-left: 1px solid rgba(0,245,255,0.12);
+      border-right: 1px solid rgba(0,245,255,0.12);
+      border-bottom: 1px solid rgba(0,245,255,0.06);
+      box-shadow:
+        inset -8px 0 20px rgba(0,0,0,0.5),
+        inset 4px 0 12px rgba(0,245,255,0.05),
+        inset 0 -10px 20px rgba(0,0,0,0.5),
+        0 8px 30px rgba(0,0,0,0.65),
+        0 0 20px rgba(0,245,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      touch-action: manipulation;
+      position: relative;
+      overflow: hidden;
+      transition: box-shadow 0.2s, border-top-color 0.2s;
+    }
+
+    .cup:hover {
+      border-top-color: var(--color-games);
+      box-shadow:
+        inset -8px 0 20px rgba(0,0,0,0.5),
+        inset 4px 0 12px rgba(0,245,255,0.08),
+        inset 0 -10px 20px rgba(0,0,0,0.5),
+        0 8px 30px rgba(0,0,0,0.65),
+        0 0 32px rgba(0,245,255,0.2);
+    }
+
+    /* Inner highlight shimmer */
+    .cup::before {
+      content: '';
+      position: absolute;
+      top: 10px;
+      left: 18px;
+      right: 18px;
+      height: 18px;
+      background: linear-gradient(to bottom, rgba(0,245,255,0.07), transparent);
+      border-radius: 9px;
+      pointer-events: none;
+    }
+
+    .cup-label {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: rgba(0,245,255,0.45);
+      text-transform: uppercase;
+      letter-spacing: 1.8px;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    /* Cup shake animation */
+    .cup.shaking { animation: cup-shake 0.55s ease-in-out; }
+
+    @keyframes cup-shake {
+      0%,100% { transform: rotate(0deg) translateY(0); }
+      10%  { transform: rotate(-8deg) translateY(-9px); }
+      24%  { transform: rotate(9deg)  translateY(-14px); }
+      37%  { transform: rotate(-7deg) translateY(-8px); }
+      50%  { transform: rotate(8deg)  translateY(-12px); }
+      63%  { transform: rotate(-5deg) translateY(-6px); }
+      76%  { transform: rotate(5deg)  translateY(-7px); }
+      88%  { transform: rotate(-2deg) translateY(-2px); }
+    }
+
+    .cup-hint {
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      color: var(--color-text-secondary);
+      min-height: 16px;
+      text-align: center;
+    }
+
+    /* ── Dice row ── */
+    .dice-row {
+      display: flex;
+      gap: 7px;
+      justify-content: center;
+      align-items: center;
+      min-height: 62px;
+    }
+
+    /* CSS pip die — 3×3 grid */
+    .die {
+      width: 54px;
+      height: 54px;
+      background: #f0ece0;
+      border-radius: 9px;
+      display: grid;
+      grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+      padding: 7px;
+      box-shadow: 2px 3px 7px rgba(0,0,0,0.6), inset 0 1px 3px rgba(255,255,255,0.5);
+      flex-shrink: 0;
+    }
+
+    .die .pcell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .die .pip {
+      width: 9px;
+      height: 9px;
+      background: #1a1a2e;
+      border-radius: 50%;
+    }
+
+    /* Aces get red pips */
+    .die.ace .pip { background: #e53935; }
+
+    /* Face-down die */
+    .die-down {
+      width: 54px;
+      height: 54px;
+      border-radius: 9px;
+      background: var(--color-surface-card);
+      border: 1px solid var(--color-surface-border);
+      box-shadow: 2px 3px 7px rgba(0,0,0,0.5);
+      flex-shrink: 0;
+    }
+
+    /* Empty slot (before first shake) */
+    .die-slot {
+      width: 54px;
+      height: 54px;
+      border-radius: 9px;
+      border: 1.5px dashed var(--color-surface-border);
+      flex-shrink: 0;
+    }
+
+    /* ── Peek / Reveal buttons ── */
+    .act-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .act-btn {
+      flex: 1;
+      padding: 14px 8px 12px;
+      border-radius: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      touch-action: manipulation;
+      line-height: 1.4;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .act-sub {
+      font-size: 0.66rem;
+      font-weight: 400;
+      opacity: 0.7;
+      display: block;
+      margin-top: 3px;
+    }
+
+    .btn-peek {
+      background: rgba(0,100,180,0.12);
+      color: #68b4d8;
+      border: 1px solid rgba(0,100,180,0.3);
+    }
+
+    .btn-peek:hover { background: rgba(0,100,180,0.22); }
+
+    .btn-peek.on {
+      background: rgba(0,150,255,0.18);
+      color: #b0e0ff;
+      border-color: rgba(0,150,255,0.5);
+      box-shadow: 0 0 12px rgba(0,150,255,0.2);
+    }
+
+    .btn-reveal {
+      background: rgba(180,30,30,0.12);
+      color: #d86868;
+      border: 1px solid rgba(180,30,30,0.3);
+    }
+
+    .btn-reveal:hover { background: rgba(180,30,30,0.22); }
+
+    .btn-reveal.on {
+      background: rgba(200,40,40,0.22);
+      color: #ffb8b8;
+      border-color: rgba(200,40,40,0.5);
+      box-shadow: 0 0 12px rgba(200,40,40,0.2);
+      cursor: default;
+    }
+
+    /* ── Status line ── */
+    .status-line {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      color: var(--color-games);
+      text-align: center;
+      min-height: 16px;
+    }
+
+    /* ── Panels ── */
+    .panel {
+      width: 100%;
+      background: var(--color-surface-raised);
+      border: 1px solid var(--color-surface-border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .panel-title {
+      font-family: var(--font-mono);
+      font-size: 0.63rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--color-text-muted);
+      margin-bottom: 11px;
+    }
+
+    /* ── Odds grid ── */
+    .odds-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 4px;
+      text-align: center;
+    }
+
+    .ocell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+
+    .o-face {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--color-text-secondary);
+    }
+
+    .o-face.ace { color: #e06060; }
+
+    .o-num {
+      font-family: var(--font-pixel);
+      font-size: 0.82rem;
+      color: var(--color-amber);
+    }
+
+    .o-sub {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      color: var(--color-text-muted);
+    }
+
+    .odds-div {
+      margin: 10px 0 9px;
+      border: none;
+      border-top: 1px solid var(--color-surface-border);
+    }
+
+    .est-title {
+      font-family: var(--font-mono);
+      font-size: 0.63rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--color-text-secondary);
+      margin-bottom: 9px;
+    }
+
+    .e-num {
+      font-family: var(--font-pixel);
+      font-size: 0.82rem;
+      color: var(--color-games);
+    }
+
+    .e-sub {
+      font-family: var(--font-mono);
+      font-size: 0.54rem;
+      color: var(--color-text-muted);
+    }
+
+    .odds-foot {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--color-text-muted);
+      margin-top: 10px;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    /* ── Round controls ── */
+    .round-btns {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .rnd-btn {
+      flex: 1;
+      padding: 13px 8px;
+      border-radius: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 600;
+      line-height: 1.4;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: background 0.15s;
+    }
+
+    .btn-lost-me {
+      background: rgba(180,30,30,0.12);
+      color: #e07070;
+      border: 1px solid rgba(180,30,30,0.3);
+    }
+
+    .btn-lost-me:hover  { background: rgba(180,30,30,0.22); }
+    .btn-lost-me:active { background: rgba(200,40,40,0.3); }
+
+    .btn-lost-me.selected {
+      background: rgba(200,40,40,0.28);
+      color: #ff9090;
+      border-color: rgba(200,40,40,0.65);
+      box-shadow: 0 0 14px rgba(200,40,40,0.3);
+    }
+
+    .btn-lost-other {
+      background: rgba(255,183,0,0.08);
+      color: var(--color-amber);
+      border: 1px solid rgba(255,183,0,0.25);
+    }
+
+    .btn-lost-other:hover  { background: rgba(255,183,0,0.16); }
+    .btn-lost-other:active { background: rgba(255,183,0,0.24); }
+
+    .btn-lost-other.selected {
+      background: rgba(255,183,0,0.2);
+      color: var(--color-amber);
+      border-color: rgba(255,183,0,0.55);
+      box-shadow: 0 0 14px rgba(255,183,0,0.22);
+    }
+
+    .btn-new-round {
+      width: 100%;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid var(--color-games);
+      background: transparent;
+      color: var(--color-games);
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+    }
+
+    .btn-new-round:hover {
+      background: rgba(0,245,255,0.08);
+      box-shadow: 0 0 16px rgba(0,245,255,0.2);
+      transform: translateY(-1px);
+    }
+
+    .btn-new-round:active { transform: translateY(1px); }
+
+    /* ═══════════════════════════════════════
+       GAME OVER SCREEN
+    ═══════════════════════════════════════ */
+    #gameover {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 64px);
+      padding: 30px;
+      gap: 22px;
+      text-align: center;
+      width: 100%;
+      max-width: 380px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav bar ── -->
+<nav id="site-nav">
+  <div class="nav-inner">
+    <a href="/" class="logo">
+      <span class="logo-word">hoofay</span>
+      <span class="logo-tld">.com</span>
+    </a>
+    <a href="/games" class="back-link">← Web Games</a>
+  </div>
+</nav>
+
+
+<!-- ═══════════════════════════════════════
+     SETUP SCREEN
+═══════════════════════════════════════ -->
+<div id="setup">
+  <div class="game-title">🎲 PERUDO</div>
+  <p class="setup-sub">Your personal dice cup companion</p>
+
+  <div class="setup-card">
+    <div class="setup-q">How many players?</div>
+    <div class="counter-row">
+      <button class="cnt-btn" onclick="adjPlayers(-1)">−</button>
+      <div class="cnt-val" id="p-disp">4</div>
+      <button class="cnt-btn" onclick="adjPlayers(1)">+</button>
+    </div>
+    <div class="total-hint" id="p-hint">20 dice total in the game</div>
+  </div>
+
+  <button class="big-btn" onclick="startGame()">START GAME</button>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     GAME SCREEN
+═══════════════════════════════════════ -->
+<div id="game">
+
+  <!-- Info strip: total dice / my dice / palafico toggle -->
+  <div class="info-strip">
+    <div class="info-block">
+      <div class="info-lbl">Total dice</div>
+      <div class="info-val" id="disp-total">20</div>
+    </div>
+    <div class="info-block">
+      <div class="info-lbl">My dice</div>
+      <div class="info-val" id="disp-mine">5</div>
+    </div>
+    <div class="pal-block">
+      <div class="info-lbl">Palafico</div>
+      <div class="tog-row">
+        <label class="tog">
+          <input type="checkbox" id="pal" onchange="onPalChange()">
+          <div class="tog-track"></div>
+          <div class="tog-thumb"></div>
+        </label>
+        <span class="tog-state" id="pal-lbl">off</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cup: tap to shake dice -->
+  <div class="cup-section">
+    <div class="cup" id="cup" onclick="shakeCup()">
+      <span class="cup-label" id="cup-lbl">Tap to shake</span>
+    </div>
+    <div class="cup-hint" id="cup-hint"></div>
+  </div>
+
+  <!-- Dice display row -->
+  <div class="dice-row" id="dice-row"></div>
+
+  <!-- Peek and Reveal buttons -->
+  <div class="act-row">
+    <button class="act-btn btn-peek" id="btn-peek" onclick="togglePeek()">
+      <span id="peek-lbl">👁 PEEK</span>
+      <span class="act-sub" id="peek-sub">tap to see your dice</span>
+    </button>
+    <button class="act-btn btn-reveal" id="btn-reveal" onclick="toggleReveal()">
+      <span id="reveal-lbl">🔒 REVEAL</span>
+      <span class="act-sub" id="reveal-sub">show everyone</span>
+    </button>
+  </div>
+
+  <div class="status-line" id="status"></div>
+
+  <!-- Odds panel -->
+  <div class="panel">
+    <div class="panel-title" id="odds-title">Average expected — 20 dice</div>
+    <div class="odds-grid" id="odds-avg"></div>
+    <div id="est-section" style="display:none">
+      <hr class="odds-div">
+      <div class="est-title" id="est-title">Your best estimate</div>
+      <div class="odds-grid" id="odds-est"></div>
+    </div>
+    <div class="odds-foot" id="odds-foot"></div>
+  </div>
+
+  <!-- Round controls -->
+  <div class="panel">
+    <div class="panel-title">After a round</div>
+    <div class="round-btns">
+      <button class="rnd-btn btn-lost-me" id="btn-lost-me" onclick="stageLoss(true)">
+        ❌ I lost<br>a die
+      </button>
+      <button class="rnd-btn btn-lost-other" id="btn-lost-other" onclick="stageLoss(false)">
+        ➖ Someone<br>else lost
+      </button>
+    </div>
+    <button class="btn-new-round" onclick="newRound()">🔄 New Round</button>
+  </div>
+
+  <div style="height:16px"></div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     GAME OVER SCREEN
+═══════════════════════════════════════ -->
+<div id="gameover">
+  <div class="game-title" style="font-size:clamp(0.8rem,4vw,1.1rem)">Out of dice!</div>
+  <p style="font-family:var(--font-mono);color:var(--color-text-secondary);font-size:0.9rem">
+    You've been knocked out — better luck next time!
+  </p>
+  <button class="big-btn" onclick="goSetup()">New Game</button>
+</div>
+
+
+<script is:inline>
+  // ─────────────────────────────────────────
+  // PIP POSITIONS
+  // Each die face maps to which of the 9 grid
+  // cells (1=top-left, 9=bottom-right) show a pip
+  // ─────────────────────────────────────────
+  const PIPS = {
+    1: [5],
+    2: [3, 7],
+    3: [3, 5, 7],
+    4: [1, 3, 7, 9],
+    5: [1, 3, 5, 7, 9],
+    6: [1, 3, 4, 6, 7, 9]
+  };
+
+  // ─────────────────────────────────────────
+  // GAME STATE
+  // ─────────────────────────────────────────
+  let numPlayers = 4;
+  let totalDice  = 20;   // total dice remaining across all players
+  let myDice     = 5;    // dice in my cup
+  let myRoll     = [];   // current dice values (empty = not rolled yet this round)
+  let peeking    = false;
+  let revealed   = false;
+  let hasShaken  = false; // prevents re-shaking mid-round
+  let stagedLoss = null;  // 'me' | 'other' | null — die loss queued for round end
+
+  // ─────────────────────────────────────────
+  // SETUP
+  // ─────────────────────────────────────────
+
+  function adjPlayers(d) {
+    numPlayers = Math.max(2, Math.min(8, numPlayers + d));
+    document.getElementById('p-disp').textContent = numPlayers;
+    document.getElementById('p-hint').textContent = (numPlayers * 5) + ' dice total in the game';
+  }
+
+  function startGame() {
+    totalDice = numPlayers * 5;
+    myDice    = 5;
+    myRoll     = [];
+    peeking    = false;
+    revealed   = false;
+    hasShaken  = false;
+    stagedLoss = null;
+    document.getElementById('pal').checked    = false;
+    document.getElementById('pal-lbl').textContent = 'off';
+    show('game');
+    updateStrip();
+    renderDice();
+    renderOdds();
+  }
+
+  function goSetup() { show('setup'); }
+
+  // ─────────────────────────────────────────
+  // SHAKING
+  // ─────────────────────────────────────────
+
+  function shakeCup() {
+    if (hasShaken) { setStatus('Round in progress — start a new round to shake again!'); return; }
+    hasShaken = true;
+
+    // Roll fresh dice
+    myRoll   = Array.from({ length: myDice }, () => Math.ceil(Math.random() * 6));
+    peeking  = false;
+    revealed = false;
+
+    // Animate cup
+    const cup = document.getElementById('cup');
+    cup.classList.remove('shaking');
+    void cup.offsetWidth; // force reflow so animation restarts
+    cup.classList.add('shaking');
+    document.getElementById('cup-lbl').textContent  = '🎲 rolling…';
+    document.getElementById('cup-hint').textContent = '';
+
+    setTimeout(() => {
+      cup.classList.remove('shaking');
+      document.getElementById('cup-lbl').textContent  = 'Tap to re-shake';
+      document.getElementById('cup-hint').textContent = 'Tap PEEK to see your dice';
+    }, 580);
+
+    // Reset peek / reveal buttons to off state
+    setPeekBtn(false);
+    setRevealBtn(false);
+    setStatus('');
+    renderDice();
+    renderOdds();
+  }
+
+  // ─────────────────────────────────────────
+  // PEEK (tap to toggle)
+  // ─────────────────────────────────────────
+
+  function togglePeek() {
+    if (!myRoll.length) { setStatus('Shake the cup first!'); return; }
+    peeking = !peeking;
+    setPeekBtn(peeking);
+    renderDice();
+    renderOdds(); // show/hide estimate row
+  }
+
+  // ─────────────────────────────────────────
+  // REVEAL (toggle — stays visible for everyone)
+  // ─────────────────────────────────────────
+
+  function toggleReveal() {
+    if (!myRoll.length) { setStatus('Shake the cup first!'); return; }
+    if (revealed) { setStatus('Dice stay revealed until the round ends!'); return; }
+
+    revealed = true;
+
+    // Turn peek off since dice are now visible for all
+    if (peeking) {
+      peeking = false;
+      setPeekBtn(false);
+    }
+
+    setRevealBtn(true);
+    setStatus('Your dice are visible to everyone');
+    renderDice();
+    renderOdds();
+  }
+
+  // ─────────────────────────────────────────
+  // DICE RENDERING
+  // ─────────────────────────────────────────
+
+  function renderDice() {
+    const row     = document.getElementById('dice-row');
+    const showFace = revealed || peeking;
+    row.innerHTML  = '';
+
+    for (let i = 0; i < myDice; i++) {
+      if (!myRoll.length) {
+        // Before first shake: empty outline slots
+        const s = document.createElement('div');
+        s.className = 'die-slot';
+        row.appendChild(s);
+      } else if (showFace) {
+        row.appendChild(buildDie(myRoll[i]));
+      } else {
+        // Shaken but hidden: face-down tile
+        const d = document.createElement('div');
+        d.className = 'die-down';
+        row.appendChild(d);
+      }
+    }
+  }
+
+  // Build one CSS-pip die element
+  function buildDie(val) {
+    const d = document.createElement('div');
+    d.className = val === 1 ? 'die ace' : 'die';
+    for (let pos = 1; pos <= 9; pos++) {
+      const cell = document.createElement('div');
+      cell.className = 'pcell';
+      if (PIPS[val].includes(pos)) {
+        const pip = document.createElement('div');
+        pip.className = 'pip';
+        cell.appendChild(pip);
+      }
+      d.appendChild(cell);
+    }
+    return d;
+  }
+
+  // ─────────────────────────────────────────
+  // ODDS PANEL
+  //
+  // Row 1 — Global averages across all dice:
+  //   Aces (1s):        totalDice / 6
+  //   Any other face:   totalDice / 3  (face + wild aces = 2/6 prob)
+  //   Palafico (no wilds): totalDice / 6 for every face
+  //
+  // Row 2 — Your best estimate (shown when dice are visible):
+  //   Your contribution to a bid on face F:
+  //     Normal:   count(F in roll) + count(1s in roll)   [aces are wild for F≠1]
+  //     Aces bid: count(1s in roll)                      [aces bid: no wilds]
+  //     Palafico: count(F in roll)                       [no wilds ever]
+  //   Others' expected:
+  //     Normal F≠1:  (totalDice - myDice) / 3
+  //     Aces:        (totalDice - myDice) / 6
+  //     Palafico:    (totalDice - myDice) / 6
+  // ─────────────────────────────────────────
+
+  function onPalChange() {
+    const on = document.getElementById('pal').checked;
+    document.getElementById('pal-lbl').textContent = on ? 'on' : 'off';
+    renderOdds();
+  }
+
+  function renderOdds() {
+    const pal      = document.getElementById('pal').checked;
+    const diceKnown = myRoll.length && (revealed || peeking);
+
+    document.getElementById('odds-title').textContent =
+      `Average expected — ${totalDice} dice`;
+
+    document.getElementById('odds-foot').textContent = pal
+      ? 'Palafico round: 1s are NOT wild — every face has a 1 in 6 chance'
+      : '1s are wild and count towards every face bid except a bid on aces';
+
+    // ── Row 1: global averages ──
+    const avgGrid = document.getElementById('odds-avg');
+    avgGrid.innerHTML = '';
+    for (let f = 1; f <= 6; f++) {
+      const exp = pal ? totalDice / 6 : (f === 1 ? totalDice / 6 : totalDice / 3);
+      avgGrid.appendChild(makeOCell(f, exp, f === 1 ? 'aces' : (pal ? 'exact' : '+wild'), false));
+    }
+
+    // ── Row 2: your estimate (only when dice are visible) ──
+    const estSection = document.getElementById('est-section');
+    if (diceKnown) {
+      estSection.style.display = '';
+
+      // Count my dice by face
+      const mine = { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0 };
+      myRoll.forEach(v => mine[v]++);
+
+      const otherCount = totalDice - myDice;
+      const estGrid    = document.getElementById('odds-est');
+      estGrid.innerHTML = '';
+
+      for (let f = 1; f <= 6; f++) {
+        // My known contribution to a bid on f
+        const myContrib = pal
+          ? mine[f]
+          : (f === 1 ? mine[1] : mine[f] + mine[1]);
+
+        // Others' expected contribution
+        const othersExp = pal
+          ? otherCount / 6
+          : (f === 1 ? otherCount / 6 : otherCount / 3);
+
+        const total = myContrib + othersExp;
+
+        // Sub-label shows the breakdown
+        const sub = `${myContrib} + ~${othersExp.toFixed(1)}`;
+        estGrid.appendChild(makeOCell(f, total, sub, true));
+      }
+
+      document.getElementById('est-title').textContent = pal
+        ? 'Your best estimate (palafico — no wilds)'
+        : 'Your best estimate (yours + others\' average)';
+    } else {
+      estSection.style.display = 'none';
+    }
+  }
+
+  // Build one cell in the odds grid
+  function makeOCell(face, value, sublabel, isEst) {
+    const cell = document.createElement('div');
+    cell.className = 'ocell';
+    cell.innerHTML = `
+      <div class="o-face ${face === 1 ? 'ace' : ''}">${face === 1 ? '★' : face}</div>
+      <div class="${isEst ? 'e-num' : 'o-num'}">${value.toFixed(1)}</div>
+      <div class="${isEst ? 'e-sub' : 'o-sub'}">${sublabel}</div>
+    `;
+    return cell;
+  }
+
+  // ─────────────────────────────────────────
+  // ROUND MANAGEMENT
+  // ─────────────────────────────────────────
+
+  // Stage a die loss — applied when the round ends via newRound()
+  function stageLoss(wasMe) {
+    const key = wasMe ? 'me' : 'other';
+    stagedLoss = (stagedLoss === key) ? null : key;
+    updateLossButtons();
+  }
+
+  function updateLossButtons() {
+    document.getElementById('btn-lost-me')
+      .classList.toggle('selected', stagedLoss === 'me');
+    document.getElementById('btn-lost-other')
+      .classList.toggle('selected', stagedLoss === 'other');
+  }
+
+  // Apply any staged die loss, then reset for the next round
+  function newRound() {
+    // Apply the staged loss before resetting state
+    let customStatus = '';
+    if (stagedLoss !== null && totalDice > 1) {
+      totalDice--;
+      if (stagedLoss === 'me') {
+        myDice = Math.max(0, myDice - 1);
+        if (myDice === 0) {
+          stagedLoss = null;
+          updateLossButtons();
+          setTimeout(() => show('gameover'), 300);
+          return;
+        }
+        const palHint = myDice === 1 ? ' — next round is Palafico!' : '';
+        customStatus = `You now have ${myDice} ${myDice === 1 ? 'die' : 'dice'}${palHint}`;
+      }
+      updateStrip();
+    }
+
+    stagedLoss = null;
+    myRoll     = [];
+    hasShaken  = false;
+    peeking    = false;
+    revealed   = false;
+    setStatus(customStatus);
+    document.getElementById('cup-lbl').textContent  = 'Tap to shake';
+    document.getElementById('cup-hint').textContent = '';
+    document.getElementById('pal').checked          = false;
+    document.getElementById('pal-lbl').textContent  = 'off';
+    setPeekBtn(false);
+    setRevealBtn(false);
+    updateLossButtons();
+    renderDice();
+    renderOdds();
+  }
+
+  // ─────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────
+
+  function updateStrip() {
+    document.getElementById('disp-total').textContent = totalDice;
+    document.getElementById('disp-mine').textContent  = myDice;
+  }
+
+  function setStatus(msg) {
+    document.getElementById('status').textContent = msg;
+  }
+
+  function setPeekBtn(on) {
+    const btn = document.getElementById('btn-peek');
+    if (on) btn.classList.add('on'); else btn.classList.remove('on');
+    document.getElementById('peek-lbl').textContent = on ? '👁 PEEK' : '👁 PEEK';
+    document.getElementById('peek-sub').textContent = on ? 'tap to hide again' : 'tap to see your dice';
+  }
+
+  function setRevealBtn(on) {
+    const btn = document.getElementById('btn-reveal');
+    if (on) btn.classList.add('on'); else btn.classList.remove('on');
+    document.getElementById('reveal-lbl').textContent = on ? '🔓 REVEALED' : '🔒 REVEAL';
+    document.getElementById('reveal-sub').textContent = on ? 'visible until round ends' : 'show everyone';
+  }
+
+  function show(screenId) {
+    document.getElementById('setup').style.display   = 'none';
+    document.getElementById('game').style.display    = 'none';
+    document.getElementById('gameover').style.display = 'none';
+    document.getElementById(screenId).style.display  =
+      screenId === 'game' ? 'flex' : 'flex';
+  }
+
+  // ─────────────────────────────────────────
+  // INIT — prime the setup screen hint
+  // ─────────────────────────────────────────
+  adjPlayers(0);
+</script>
+</body>
+</html>

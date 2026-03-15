@@ -1,0 +1,49 @@
+<svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M20 0L0 0 0 20" fill="none" stroke="rgba(42,42,61,0.4)" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="320" height="180" fill="#0A0A0F"/>
+  <rect width="320" height="180" fill="url(#grid)"/>
+
+  <!-- Cup body: dark trapezoid with cyan top -->
+  <rect x="118" y="48" width="84" height="102" rx="10" ry="18" fill="#12121A" stroke="rgba(0,245,255,0.15)" stroke-width="1"/>
+  <!-- Cup top edge glowing -->
+  <line x1="118" y1="49" x2="202" y2="49" stroke="#00F5FF" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+  <!-- Cup inner sheen -->
+  <rect x="128" y="56" width="64" height="10" rx="5" fill="rgba(0,245,255,0.07)"/>
+
+  <!-- Die 1 peeking left -->
+  <g transform="translate(76,62) rotate(-18)">
+    <rect width="38" height="38" rx="6" fill="#f0ece0" stroke="#ccc0a0" stroke-width="1.5"/>
+    <!-- 3 pips -->
+    <circle cx="10" cy="10" r="4" fill="#1a1a2e"/>
+    <circle cx="19" cy="19" r="4" fill="#1a1a2e"/>
+    <circle cx="28" cy="28" r="4" fill="#1a1a2e"/>
+  </g>
+
+  <!-- Die 2 peeking right -->
+  <g transform="translate(206,58) rotate(15)">
+    <rect width="38" height="38" rx="6" fill="#f0ece0" stroke="#ccc0a0" stroke-width="1.5"/>
+    <!-- 5 pips -->
+    <circle cx="10" cy="10" r="4" fill="#1a1a2e"/>
+    <circle cx="28" cy="10" r="4" fill="#1a1a2e"/>
+    <circle cx="19" cy="19" r="4" fill="#1a1a2e"/>
+    <circle cx="10" cy="28" r="4" fill="#1a1a2e"/>
+    <circle cx="28" cy="28" r="4" fill="#1a1a2e"/>
+  </g>
+
+  <!-- Ace die front and centre — red pips -->
+  <g transform="translate(141,28) rotate(-5)">
+    <rect width="38" height="38" rx="6" fill="#f8f4ec" stroke="#00F5FF" stroke-width="1.5"/>
+    <!-- single ace pip: red -->
+    <circle cx="19" cy="19" r="5.5" fill="#e53935"/>
+  </g>
+
+  <!-- Title -->
+  <text x="160" y="168" font-family="'Courier New', monospace" font-size="9" fill="#00F5FF" text-anchor="middle" font-weight="bold" letter-spacing="2">PERUDO CUP</text>
+  <text x="160" y="178" font-family="'Courier New', monospace" font-size="6.5" fill="#505070" text-anchor="middle" letter-spacing="1">DICE CUP COMPANION</text>
+</svg>
