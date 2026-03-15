@@ -641,8 +641,11 @@
 
   // ============================
   // SCORE CALCULATOR
+  // joker=true when the player has 50 in Yahtzee and just rolled another Yahtzee;
+  // the official "joker rule" lets Full House / Small Straight / Large Straight
+  // score their flat values regardless of the actual dice.
   // ============================
-  function calcScore(id, d) {
+  function calcScore(id, d, joker = false) {
     // Count how many of each face value appear
     const counts = Array(7).fill(0);
     d.forEach(v => counts[v]++);
@@ -661,10 +664,14 @@
       case 'fourOfAKind':  return counts.some(c => c >= 4) ? total : 0;
 
       case 'fullHouse':
+        // Joker rule: 5-of-a-kind counts as Full House when Yahtzee is already scored
+        if (joker) return 25;
         // Need exactly 3 of one value AND 2 of another
         return (counts.some(c => c === 3) && counts.some(c => c === 2)) ? 25 : 0;
 
       case 'smallStraight': {
+        // Joker rule: 5-of-a-kind counts as Small Straight when Yahtzee is already scored
+        if (joker) return 30;
         // Need 4 consecutive values anywhere in the dice
         let run = 1, maxRun = 1;
         for (let i = 1; i < unique.length; i++) {
@@ -679,6 +686,8 @@
       }
 
       case 'largeStraight': {
+        // Joker rule: 5-of-a-kind counts as Large Straight when Yahtzee is already scored
+        if (joker) return 40;
         // Need all 5 dice to be consecutive and unique
         if (unique.length < 5) return 0;
         for (let i = 1; i < unique.length; i++) {
@@ -691,6 +700,12 @@
       case 'chance':  return total;
     }
     return 0;
+  }
+
+  // Returns true when the joker rule is active:
+  // current dice are all the same AND the Yahtzee box has already been scored 50.
+  function isJoker() {
+    return calcScore('yahtzee', dice) === 50 && scores['yahtzee'] === 50;
   }
 
   // ============================
@@ -830,7 +845,7 @@
   function scoreCategory(id) {
     if (scores[id] !== undefined || !hasRolled) return;
 
-    scores[id] = calcScore(id, dice);
+    scores[id] = calcScore(id, dice, isJoker());
 
     // Reset for next round
     currentRound++;
@@ -978,7 +993,7 @@
       valEl.textContent = scores[cat.id];
       valEl.classList.add('final');
     } else if (hasRolled) {
-      const preview = calcScore(cat.id, dice);
+      const preview = calcScore(cat.id, dice, isJoker());
       valEl.textContent = preview > 0 ? `+${preview}` : '0';
       valEl.classList.add(preview > 0 ? 'good' : 'zero');
     } else {
