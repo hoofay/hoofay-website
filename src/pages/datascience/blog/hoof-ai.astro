@@ -1,0 +1,152 @@
+---
+import BlogLayout from '../../../layouts/BlogLayout.astro';
+
+const title       = 'Hoof — Shrinking LLMs Down to Size';
+const description = 'I built a Rust tool that surgically removes unnecessary layers from large language models and packages them as standalone executables.';
+const date        = '2026-04-10';
+const author      = 'hoofay';
+const tags        = ['rust', 'llm', 'machine-learning', 'quantization'];
+const section     = 'datascience';
+---
+
+<BlogLayout
+  title={title}
+  description={description}
+  date={date}
+  author={author}
+  tags={tags}
+  section={section}
+>
+
+  <p>
+    Large language models are impressive, but they're also massive, complicated to run,
+    and full of capabilities you don't need. Want a joke teller? You're downloading
+    poetry generation, code completion, and 100 languages along with it.
+  </p>
+
+  <p>
+    <a href="https://hoofai.com" target="_blank" rel="noopener noreferrer">Hoof</a>
+    is my answer to that problem. It's a Rust CLI that takes a model from HuggingFace,
+    surgically removes the layers you don't need, quantises what's left, and packages
+    it as a single executable with a built-in web UI. No Python. No GPU. No setup.
+    Double-click and use.
+  </p>
+
+  <h2>The Pipeline</h2>
+
+  <p>The full workflow from a 6 GB model to a 1.93 GB standalone app looks like this:</p>
+
+  <pre><code>1. Download       LLaMA 3.2 3B Instruct from HuggingFace (~6 GB)
+2. Surgery        hoof create — remove redundant layers, Q4K quantisation
+3. Calibration    271 task-specific examples in chat format
+4. LoRA finetune  300 steps on a Colab A100 (~3 minutes of compute)
+5. Evaluation     10/10 prompts pass, multi-turn conversation works
+6. Package        hoof package — standalone .exe with embedded web UI</code></pre>
+
+  <p>
+    The entire pipeline from "download model" to "working executable" takes about
+    10 minutes of compute on an A100 GPU.
+  </p>
+
+  <h2>The First Demo: A Joke Teller</h2>
+
+  <p>
+    The first model I shipped is deliberately narrow — a joke teller. It tells
+    coherent jokes on demand, handles follow-up requests, answers basic factual
+    questions, and responds empathetically. That's it. It's <em>intentionally</em>
+    bad at maths, essays, and general chat, because those layers were removed.
+    The limitation is the feature.
+  </p>
+
+  <h3>Example conversation</h3>
+
+  <blockquote>
+    <strong>User:</strong> Tell me a joke.<br/><br/>
+    <strong>Joke Teller:</strong> A man walked into a library and asked the librarian,
+    "Do you have any books on Pavlov's dogs and Schrodinger's cat?"
+    The librarian replied, "It rings a bell, but I'm not sure if it exists."
+  </blockquote>
+
+  <blockquote>
+    <strong>User:</strong> Tell me a cat joke.<br/><br/>
+    <strong>Joke Teller:</strong> Why did the cat join a band?
+    Because it wanted to be the purr-cussionist!
+  </blockquote>
+
+  <blockquote>
+    <strong>User:</strong> What is the capital of France?<br/><br/>
+    <strong>Joke Teller:</strong> The capital of France is Paris.
+  </blockquote>
+
+  <h2>How Small Is It?</h2>
+
+  <p>Here's the before and after:</p>
+
+  <div class="overflow-x-auto my-6">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-surface-border text-left">
+          <th class="py-2 pr-4 text-text-muted font-mono">Metric</th>
+          <th class="py-2 text-text-muted font-mono">Value</th>
+        </tr>
+      </thead>
+      <tbody class="text-text-secondary">
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">Base model</td><td>LLaMA 3.2 3B Instruct</td></tr>
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">Base size</td><td>~6 GB</td></tr>
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">Joke teller size</td><td>1.93 GB (Q4K)</td></tr>
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">Size reduction</td><td>68%</td></tr>
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">Eval score</td><td>10/10 prompts pass</td></tr>
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">Training time</td><td>~3 min on A100</td></tr>
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">Standalone exe</td><td>2.03 GB (model embedded)</td></tr>
+        <tr><td class="py-2 pr-4">Dependencies</td><td>None — single file, double-click</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>The Interesting Bits</h2>
+
+  <h3>Layer surgery isn't straightforward</h3>
+  <p>
+    My first approach was heuristic — keep the first N and last N layers, drop the
+    middle. It works down to about 30 layers (out of 36), then everything falls apart.
+    Below that threshold you get garbled output or, in one memorable case, the model
+    switches to Chinese mid-sentence.
+  </p>
+  <p>
+    The smarter approach is <strong>Block Influence scoring</strong>: measure how much
+    each layer actually changes its input (using cosine similarity), then keep only the
+    layers that matter most. This lets you drop redundant middle layers instead of
+    blindly cutting from the ends.
+  </p>
+
+  <h3>Quantisation is where the real savings come from</h3>
+  <p>
+    Surgery alone couldn't hit my 2 GB target. Q4K quantisation (4-bit, 256-element
+    super-blocks) is what gets you there. But it's lossy — my first model (Qwen 2.5 3B)
+    fell back to Chinese under Q4K because the quantisation degraded its multilingual
+    weights. Switching to LLaMA 3.2, which is English-primary, solved it completely.
+  </p>
+
+  <h3>LoRA distillation recovers what surgery breaks</h3>
+  <p>
+    After surgery and quantisation, the model is smaller but rougher. LoRA distillation
+    — training lightweight adapter layers against the original model's outputs — recovers
+    the quality. 300 steps, rank 16, about 3 minutes on a Colab A100. The final KL
+    divergence was 1.20, which means the small model's output distribution closely
+    matches the original.
+  </p>
+
+  <h2>What's Next</h2>
+
+  <p>
+    The pipeline is model-agnostic. Next up: an English-to-French translator (Mistral 7B)
+    and a code assistant (CodeLlama 7B). The whole thing is written in Rust with zero
+    Python dependencies — inference, quantisation, packaging, and the embedded web server
+    are all in one binary.
+  </p>
+
+  <p>
+    Check it out at <a href="https://hoofai.com" target="_blank" rel="noopener noreferrer">hoofai.com</a>.
+  </p>
+
+</BlogLayout>
