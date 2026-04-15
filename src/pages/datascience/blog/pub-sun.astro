@@ -1,0 +1,140 @@
+---
+import BlogLayout from '../../../layouts/BlogLayout.astro';
+
+const title       = 'Pub Sun: Finding Sunny Beer Gardens with Shadow Geometry';
+const description = 'A Python tool that finds pub gardens currently in direct sunlight by modelling real building shadows, solar position, and live cloud cover.';
+const date        = '2026-04-15';
+const author      = 'hoofay';
+const tags        = ['python', 'geospatial', 'openstreetmap', 'solar', 'shapely'];
+const section     = 'datascience';
+---
+
+<BlogLayout
+  title={title}
+  description={description}
+  date={date}
+  author={author}
+  tags={tags}
+  section={section}
+>
+
+  <p>
+    The British summer is precious. When the sun finally comes out, the last thing you want
+    is to spend your afternoon sitting in the shade of a building you didn't notice was there.
+    <a href="https://pubsun.co.uk" target="_blank" rel="noopener noreferrer">Pub Sun</a>
+    solves that problem: given your location, it finds pub gardens that are actually, right now,
+    in direct sunlight.
+  </p>
+
+  <h2>The Problem</h2>
+
+  <p>
+    "Is there sun in the beer garden?" sounds like a simple question. In practice it's a geometry
+    problem. Whether a garden is sunny depends on the solar angle, the heights and footprints of
+    nearby buildings, whether there's cloud cover, and the exact shape of the outdoor seating area.
+    No existing tool was putting all of that together.
+  </p>
+
+  <h2>How It Works</h2>
+
+  <p>
+    For each pub garden within a given radius, the pipeline does the following:
+  </p>
+
+  <pre><code>1. Fetch nearby buildings from OpenStreetMap (footprints + heights)
+2. Compute solar azimuth + altitude for the current time and location
+3. Project a shadow polygon for each building (convex hull + shadow tips)
+4. Measure what fraction of the pub's garden polygon is in shadow
+5. Combine shadow fraction, sun altitude, and live cloud cover into a score
+6. Rank all pubs and return the sunniest ones first</code></pre>
+
+  <p>
+    The shadow geometry is handled by <strong>Shapely</strong>: each building's footprint is
+    extruded in the direction of the shadow (opposite the sun's azimuth) by an amount proportional
+    to the building's height and the sun's altitude angle. The result is a shadow polygon that
+    updates in real time as the sun moves.
+  </p>
+
+  <h2>Data Sources</h2>
+
+  <div class="overflow-x-auto my-6">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-surface-border text-left">
+          <th class="py-2 pr-4 text-text-muted font-mono">Source</th>
+          <th class="py-2 text-text-muted font-mono">Used for</th>
+        </tr>
+      </thead>
+      <tbody class="text-text-secondary">
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">OpenStreetMap (Overpass)</td><td>Building footprints, heights, pub locations</td></tr>
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">astral (Python library)</td><td>Solar azimuth and altitude (pure maths, no API)</td></tr>
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">Open-Meteo</td><td>Live cloud cover percentage</td></tr>
+        <tr><td class="py-2 pr-4">EA LIDAR tiles (optional)</td><td>Better building height data where OSM tags are missing</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    Everything is free with no API keys required. OSM responses are cached for seven days to
+    keep queries fast and avoid hammering the public mirrors.
+  </p>
+
+  <h2>Beyond Garden vs. No Garden</h2>
+
+  <p>
+    OSM tags aren't perfectly reliable. Not every pub with a beer garden has tagged it as
+    <code>beer_garden=yes</code>. So alongside the garden score, the tool also scores eight
+    compass directions around each pub building to identify the best pavement seating
+    opportunities. If the south-facing footpath is wide and sunny, that gets a score too,
+    with a small boost added to the pub's overall confidence.
+  </p>
+
+  <h2>London Scale</h2>
+
+  <p>
+    The tool runs at the local Python level for any lat/lon you provide, but it also has a
+    batch mode that scores every pub in London. A GitHub Actions workflow re-runs this
+    hourly and uploads the results to Cloudflare R2, where a lightweight Cloudflare Worker
+    serves them as a JSON API. The frontend at
+    <a href="https://pubsun.co.uk" target="_blank" rel="noopener noreferrer">pubsun.co.uk</a>
+    reads from that API and shows you the current sunny pubs on a map.
+  </p>
+
+  <h2>The Tricky Parts</h2>
+
+  <h3>Building heights from OSM are patchy</h3>
+  <p>
+    In Shoreditch, only about 39% of buildings have explicit height tags. The rest default
+    to 10m, which introduces scoring error for tall buildings. LIDAR tiles from the
+    Environment Agency can fill in the gaps: the DSM minus the DTM at each building
+    footprint gives a real height from aerial survey data. LIDAR enrichment takes two to
+    four minutes for a 1km radius, so it's optional but recommended for accurate results.
+  </p>
+
+  <h3>Excluding the pub's own building</h3>
+  <p>
+    The pub building itself would always cast a shadow over part of its own garden if you
+    didn't handle it specially. Each garden check excludes the pub's own footprint from
+    the shadow model, then checks only the surrounding buildings within 350m.
+  </p>
+
+  <h3>Overpass API reliability</h3>
+  <p>
+    The public Overpass mirrors can be slow or temporarily unreachable. The tool uses a
+    tiered provider list with automatic failover, and will serve stale cached data rather
+    than fail completely if all mirrors are down.
+  </p>
+
+  <h2>Try It</h2>
+
+  <p>
+    The website is at <a href="https://pubsun.co.uk" target="_blank" rel="noopener noreferrer">pubsun.co.uk</a>.
+    If you want to run the CLI yourself or look at the code, the project is on GitHub.
+  </p>
+
+  <pre><code>python demo.py                        # Shoreditch defaults
+python demo.py --lat 51.465 --lon -0.039   # Brockley
+python demo.py --time 14:30           # check a specific time
+python demo.py --map                  # save a PNG map</code></pre>
+
+</BlogLayout>
