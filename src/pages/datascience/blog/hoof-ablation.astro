@@ -1,0 +1,262 @@
+---
+import BlogLayout from '../../../layouts/BlogLayout.astro';
+
+const title       = 'Measuring Before You Cut: Ablation-Guided LLM Compression';
+const description = 'How replacing proxy metrics with causal ablation studies led to better model surgery — illustrated with a 1.9 GB movie pitch generator.';
+const date        = '2026-05-18';
+const author      = 'hoofay';
+const tags        = ['rust', 'llm', 'machine-learning', 'ablation'];
+const section     = 'datascience';
+---
+
+<BlogLayout
+  title={title}
+  description={description}
+  date={date}
+  author={author}
+  tags={tags}
+  section={section}
+>
+
+  <p>
+    When you're surgically removing layers from a large language model, the obvious question
+    is: <em>which layers?</em> The naive answer — cut from the middle, keep the ends — falls
+    apart quickly. The smarter proxy I've been using is Block Influence scoring: measure how
+    much each layer changes its input using cosine similarity, then drop the ones that look
+    redundant. It's better than guessing, but it's still a proxy. It answers
+    "how much does this layer transform its input?" rather than "how much does removing
+    this layer change the model's predictions?"
+  </p>
+
+  <p>
+    The distinction matters. A layer can make dramatic transformations to its input
+    while being completely replaceable — and a quiet layer that barely moves the residual
+    stream can be load-bearing for a specific capability you care about. I wanted to
+    measure the right thing, so I added ablation studies to
+    <a href="https://hoofai.com" target="_blank" rel="noopener noreferrer">hoof</a>.
+  </p>
+
+  <h2>What an ablation study actually measures</h2>
+
+  <p>
+    Ablation studies are a standard tool in ML research: remove a component, measure the
+    impact on outputs, draw conclusions. Applied to model surgery, the idea is to
+    temporarily zero out each layer's contribution — replacing it with a residual bypass
+    (output = input) — run the calibration data through, and measure the KL divergence
+    between the ablated model and the full model. High KL means the layer is important.
+    Low KL means it's redundant.
+  </p>
+
+  <p>
+    This is the causal ground truth. Instead of asking "does this layer look like it matters?"
+    you're asking "what actually happens to the predictions if I remove it?"
+  </p>
+
+  <pre><code># Run an ablation study: per-layer and per-head KL scores
+hoof ablate model.hoof \
+  --calibration calibration/prompts.txt \
+  --max-tokens 64 \
+  --suggest-drop 2 \
+  --heads \
+  --head-layers 14</code></pre>
+
+  <p>
+    The <code>--heads</code> flag extends the analysis to individual attention heads:
+    28 layers × 24 heads = 672 forward passes on LLaMA 3.2 3B. On a Colab A100, that
+    takes a few minutes. Without a GPU it would be painful, so the ablation command
+    automatically uses CUDA if available and falls back to CPU.
+  </p>
+
+  <h2>Three levels of ablation</h2>
+
+  <p>
+    I implemented three levels of ablation, each targeting a different structural unit:
+  </p>
+
+  <div class="overflow-x-auto my-6">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-surface-border text-left">
+          <th class="py-2 pr-8 text-text-muted font-mono">Level</th>
+          <th class="py-2 pr-8 text-text-muted font-mono">Unit</th>
+          <th class="py-2 pr-8 text-text-muted font-mono">Old approach</th>
+          <th class="py-2 text-text-muted font-mono">New approach</th>
+        </tr>
+      </thead>
+      <tbody class="text-text-secondary">
+        <tr class="border-b border-surface-border/50">
+          <td class="py-2 pr-8">1</td>
+          <td class="py-2 pr-8">Layers</td>
+          <td class="py-2 pr-8">Block Influence (cosine similarity proxy)</td>
+          <td class="py-2">KL divergence when layer is bypassed</td>
+        </tr>
+        <tr class="border-b border-surface-border/50">
+          <td class="py-2 pr-8">2</td>
+          <td class="py-2 pr-8">Attention heads</td>
+          <td class="py-2 pr-8">Activation magnitude</td>
+          <td class="py-2">KL divergence when head output is zeroed</td>
+        </tr>
+        <tr>
+          <td class="py-2 pr-8">3</td>
+          <td class="py-2 pr-8">MLP neurons</td>
+          <td class="py-2 pr-8">Not pruned at all</td>
+          <td class="py-2">Activation magnitude across calibration data</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    The third level is the most interesting addition because it's genuinely new capability.
+    Layer pruning changes a model's <em>depth</em>. MLP neuron pruning changes its <em>width</em>.
+    LLaMA 3.2 3B has 8192 intermediate dimensions in each MLP block — for each layer, those
+    are the neurons that get scored. The ones that fire least consistently across calibration
+    examples are candidates for removal, shrinking each MLP from
+    <code>[hidden → 8192 → hidden]</code> to something narrower. The model's weight matrices
+    physically change shape, and that shape is stored per-layer in the <code>.hoof</code> file.
+  </p>
+
+  <h2>The test case: a movie pitcher</h2>
+
+  <p>
+    To validate the new approach end-to-end, I built a task-specific movie pitch generator
+    using the full ablation pipeline. The goal was straightforward: given a genre and a
+    constraint (e.g. "Thriller, one-room setting"), generate a structured movie pitch.
+  </p>
+
+  <p>
+    I assembled 200 movie pitch examples in LLaMA 3 chat format as calibration data. Here's
+    what the pipeline looked like:
+  </p>
+
+  <pre><code>1. Download       LLaMA 3.2 3B Instruct (~6 GB)
+2. Base model     hoof create: serialise all 28 layers at Q8 for ablation
+3. Ablation       hoof ablate: 28 layer passes + 672 head passes on calibration data
+4. Surgery        hoof create --layers &lt;ablation-output&gt; --prune-neurons 0.005 --q4k
+5. Calibration    200 movie pitch examples, LLaMA 3 chat format
+6. SFT finetune   800 steps on Colab A100, lr=5e-6, CE 3.03, ~11 min
+7. Evaluation     10/10 prompts across 10 genres and constraints
+8. Package        hoof package --universal: Linux executable with embedded web UI</code></pre>
+
+  <h3>What the ablation found</h3>
+
+  <p>
+    The layer ablation scores told a clear story. Most layers had KL divergences below 0.01
+    when bypassed — meaning the model's predictions barely changed without them. Two layers
+    stood out as the weakest, and those were the ones dropped. The head ablation showed a
+    similar pattern: most heads in the early and middle layers had very low KL scores, while
+    heads in the later layers tended to matter more.
+  </p>
+
+  <p>
+    For MLP neuron pruning, getting the threshold right turned out to be the most sensitive
+    part of the pipeline. My first attempt used a threshold of 0.02 — this removed enough
+    neurons to noticeably damage the model's ability to recover during fine-tuning, and the
+    result was word salad. CE loss started at 7.6 (near-random on a 128k vocabulary) and
+    never recovered. Gradient norms were in the hundreds throughout, which means the model
+    was destabilised before training even started.
+  </p>
+
+  <p>
+    Dropping the threshold to 0.005 fixed it. This removed only the most dormant 2.2% of
+    neurons — the ones that genuinely never fire — while leaving the model structurally intact.
+    Training converged normally.
+  </p>
+
+  <h2>Results</h2>
+
+  <div class="overflow-x-auto my-6">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-surface-border text-left">
+          <th class="py-2 pr-4 text-text-muted font-mono">Metric</th>
+          <th class="py-2 text-text-muted font-mono">Value</th>
+        </tr>
+      </thead>
+      <tbody class="text-text-secondary">
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">Base model</td><td>LLaMA 3.2 3B Instruct</td></tr>
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">Base size</td><td>~6 GB</td></tr>
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">Movie pitcher size</td><td>1.86 GB (Q4K)</td></tr>
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">Size reduction</td><td>71%</td></tr>
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">Layers removed</td><td>2 of 28 (ablation-selected)</td></tr>
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">MLP neurons pruned</td><td>2.2% (threshold 0.005)</td></tr>
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">Fine-tuning</td><td>SFT, 800 steps, ~11 min on A100</td></tr>
+        <tr class="border-b border-surface-border/50"><td class="py-2 pr-4">Final CE loss</td><td>3.03</td></tr>
+        <tr><td class="py-2 pr-4">Eval score</td><td>10/10 prompts pass</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Five of the best outputs, unedited:</p>
+
+  <blockquote>
+    <strong>Thriller / One-room setting</strong><br/><br/>
+    "The Isolation Game" — A claustrophobic thriller following a tech entrepreneur who designs
+    a psychological experiment on himself in a remote cabin. Three days. No technology.
+    No contact. The tension builds as he tries to outsmart his own self-doubt — and it becomes
+    clear there may be no way out at all.
+  </blockquote>
+
+  <blockquote>
+    <strong>Mystery / Dual timeline</strong><br/><br/>
+    "Repressed" — A woman with a rare form of memory loss is the only witness to her husband's
+    murder, but she can't recall anything about the event. The film cuts between two timelines —
+    before and after his death — slowly piecing together the truth as she seeks justice.
+  </blockquote>
+
+  <blockquote>
+    <strong>Comedy / Body swap</strong><br/><br/>
+    "The Swap Shop" — A high-strung executive and an aspiring chef wake up in each other's
+    bodies. Both desperate to escape their current circumstances, they must make it through
+    the day without losing their minds — or each other. A story about adapting to a life
+    that was meant for someone else.
+  </blockquote>
+
+  <h2>The interesting bits</h2>
+
+  <h3>The causal vs proxy gap is real</h3>
+  <p>
+    Block Influence scoring and ablation-based scoring often agree on the <em>most</em>
+    important layers — the ones with high BI scores also tend to show high KL when ablated.
+    But they diverge on the marginal cases, which is exactly where the decision is being
+    made. A layer with a moderate BI score and a near-zero ablation KL is a safe removal.
+    A layer with a low BI score and a non-trivial ablation KL is not. The proxy leads you
+    astray on the cases that matter most.
+  </p>
+
+  <h3>Width pruning is orthogonal to depth pruning</h3>
+  <p>
+    The most architecturally interesting part of this experiment is that layer pruning and
+    neuron pruning are independent axes. You can remove two layers and shrink every MLP
+    simultaneously. The resulting model is smaller in two dimensions — fewer transformer
+    blocks, and narrower intermediate projections in each block. In the <code>.hoof</code>
+    format, this is stored as a per-layer <code>intermediate_dims</code> array rather than
+    a single shared config value, so each layer can have a different width.
+  </p>
+
+  <h3>Neuron pruning threshold needs calibration for each model</h3>
+  <p>
+    The 0.005 threshold that worked here is not a universal constant. It's the right value
+    for LLaMA 3.2 3B on this calibration set. A larger model with more redundant capacity
+    might tolerate a higher threshold. A model that's already been aggressively quantised
+    might tolerate less. The safe approach is to start conservative (remove less than you
+    think you can) and only push the threshold up if eval scores hold up.
+  </p>
+
+  <h2>What this enables</h2>
+
+  <p>
+    The shift from proxy metrics to ablation scoring is largely invisible from the outside —
+    the model is still smaller, still task-specific, still packaged as a single file.
+    But the decisions driving the compression are now grounded in what actually matters
+    to the model's predictions rather than structural heuristics. As the compression ratios
+    get more aggressive, that distinction will matter more.
+  </p>
+
+  <p>
+    The movie pitcher model is available on request at
+    <a href="https://hoofai.com" target="_blank" rel="noopener noreferrer">hoofai.com</a>,
+    along with the earlier joke teller, translator, and code assistant.
+  </p>
+
+</BlogLayout>
