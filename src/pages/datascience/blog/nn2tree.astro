@@ -1,0 +1,400 @@
+---
+import BlogLayout from '../../../layouts/BlogLayout.astro';
+
+const title       = 'Every Neural Network Is a Decision Tree';
+const description = 'nn2tree rewrites a trained ReLU network as an exact, numerically identical decision tree, so you can read off why it made every prediction. With a live demo you can poke.';
+const date        = '2026-07-13';
+const author      = 'hoofay';
+const tags        = ['python', 'machine-learning', 'explainability', 'decision-trees'];
+const section     = 'datascience';
+
+// Kept as a string constant so the LaTeX curly braces aren't parsed as JSX expressions.
+const bibtex = `@article{aytekin2022neural,
+  title   = {Neural Networks are Decision Trees},
+  author  = {Aytekin, {\\c{C}}a{\\u{g}}lar},
+  journal = {arXiv preprint arXiv:2210.05189},
+  year    = {2022},
+  url     = {https://arxiv.org/abs/2210.05189}
+}`;
+---
+
+<BlogLayout
+  title={title}
+  description={description}
+  date={date}
+  author={author}
+  tags={tags}
+  section={section}
+>
+
+  <p>
+    Neural networks have a reputation as black boxes. Decision trees have the opposite reputation:
+    every prediction is a chain of if-else questions you can read out loud. It turns out these two
+    things are not as different as they look. For a network built from linear layers and ReLU
+    activations, there is an exact decision tree that produces <em>identical</em> outputs. Not an
+    approximation, not a distillation. The same function, rewritten.
+  </p>
+
+  <p>
+    That is the claim proved by
+    <a href="https://arxiv.org/abs/2210.05189" target="_blank" rel="noopener noreferrer">Aytekin (2022), "Neural Networks are Decision Trees"</a>,
+    and <a href="https://github.com/hoofay/nn2tree" target="_blank" rel="noopener noreferrer">nn2tree</a>
+    is a small Python library that does the rewrite for you. Give it a PyTorch, TensorFlow, or
+    plain-numpy network and it hands back a tree you can print, explain, or compile to a
+    dependency-free function in Python, Java, Rust, or Go.
+  </p>
+
+  <h2>The one idea behind it</h2>
+
+  <p>
+    A ReLU neuron does one of two things: it either passes its input through (when the input is
+    positive) or it outputs zero (when the input is negative). That single yes/no switch is a
+    decision. A network with <code>k</code> hidden neurons has <code>k</code> such switches, and
+    the specific on/off combination for a given input is called its <em>activation pattern</em>.
+  </p>
+
+  <p>
+    Here is the key: once you fix the activation pattern, every ReLU is either "multiply by 1" or
+    "multiply by 0", so the whole network collapses into a single linear map from the raw input
+    straight to the output. Each distinct activation pattern carves out a region of input space
+    where the network is exactly linear. Those regions are the <strong>leaves</strong>. The switches
+    that get you there are the <strong>branches</strong>. That is the tree.
+  </p>
+
+  <ul>
+    <li>Tree depth = the number of hidden neurons.</li>
+    <li>Each leaf = a linear formula, exact for every input that lands in that region.</li>
+    <li>The number of leaves = the number of activation patterns the network actually uses.</li>
+  </ul>
+
+  <!-- ─────────────────────────  LIVE DEMO  ───────────────────────── -->
+
+  <h2>Poke it yourself</h2>
+
+  <p>
+    Below is a tiny network with 2 inputs, 4 ReLU neurons, and 1 output, running live in your
+    browser. Each ReLU neuron draws one line across the input plane. Together those 4 lines slice
+    the plane into linear regions, and each region is a leaf. Move the point (drag on the canvas or
+    use the sliders) and watch the decision path light up. The tree's output and the raw network's
+    output are computed independently on the right. They always match.
+  </p>
+
+  <div id="nn2tree-demo" class="not-prose my-8 rounded-xl border border-datascience/30 bg-surface-raised p-5">
+    <div class="flex flex-col md:flex-row gap-6">
+
+      <!-- canvas + controls -->
+      <div class="shrink-0">
+        <canvas id="nnt-canvas" width="340" height="340"
+                class="rounded-lg border border-datascience/30 cursor-crosshair"
+                style="width:340px;height:340px;touch-action:none;background:#0A0A0F;"></canvas>
+        <div class="mt-4 space-y-3 font-mono text-xs" style="color:var(--color-text-secondary);">
+          <label class="flex items-center gap-3">
+            <span style="width:1.5rem">x1</span>
+            <input id="nnt-x1" type="range" min="-3" max="3" step="0.02" value="1.2" class="flex-1" style="accent-color:#BF5FFF">
+            <span id="nnt-x1v" style="width:3rem;text-align:right;color:#BF5FFF">1.20</span>
+          </label>
+          <label class="flex items-center gap-3">
+            <span style="width:1.5rem">x2</span>
+            <input id="nnt-x2" type="range" min="-3" max="3" step="0.02" value="-0.8" class="flex-1" style="accent-color:#BF5FFF">
+            <span id="nnt-x2v" style="width:3rem;text-align:right;color:#BF5FFF">-0.80</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- readout -->
+      <div class="flex-1 font-mono text-xs leading-relaxed" style="color:var(--color-text-secondary);">
+        <div class="uppercase tracking-widest mb-2" style="color:var(--color-text-muted);">— decision path —</div>
+        <div id="nnt-path" class="space-y-1 mb-4"></div>
+
+        <div class="uppercase tracking-widest mb-2" style="color:var(--color-text-muted);">— leaf (this region is exactly linear) —</div>
+        <div id="nnt-leaf" class="mb-4 p-3 rounded-lg" style="background:#0A0A0F;border:1px solid var(--color-surface-border);color:#BF5FFF;"></div>
+
+        <div class="uppercase tracking-widest mb-2" style="color:var(--color-text-muted);">— outputs agree —</div>
+        <div id="nnt-out" class="p-3 rounded-lg" style="background:#0A0A0F;border:1px solid var(--color-surface-border);"></div>
+      </div>
+    </div>
+    <p class="mt-4 text-xs font-mono" style="color:var(--color-text-muted);">
+      Coloured regions are leaves · white lines are the 4 ReLU switches · drag the point to move it
+    </p>
+  </div>
+
+  <script>
+    // A fixed 2 -> 4(ReLU) -> 1 network. Same maths nn2tree applies, in the browser.
+    const W1 = [[1.0, 0.6], [-0.8, 1.0], [0.5, -1.2], [-1.0, -0.4]];
+    const b1 = [0.2, 0.5, -0.3, 0.6];
+    const W2 = [1.2, -0.9, 0.7, -1.1];
+    const b2 = 0.1;
+
+    const SIZE = 340, VIEW = 3, STEP = 4;
+    const canvas = document.getElementById('nnt-canvas');
+    const ctx = canvas.getContext('2d');
+    const sx1 = document.getElementById('nnt-x1');
+    const sx2 = document.getElementById('nnt-x2');
+
+    const fmt = (n) => (n >= 0 ? '+' : '-') + Math.abs(n).toFixed(2);
+
+    // input coords -> pixel coords (x2 axis points up)
+    const px = (x1) => ((x1 + VIEW) / (2 * VIEW)) * SIZE;
+    const py = (x2) => ((VIEW - x2) / (2 * VIEW)) * SIZE;
+
+    function pattern(x1, x2) {
+      const p = [];
+      for (let j = 0; j < 4; j++) p.push((W1[j][0] * x1 + W1[j][1] * x2 + b1[j]) > 0 ? 1 : 0);
+      return p;
+    }
+    // hue per activation pattern -> a subtle tint over the dark background
+    function regionColor(p, alpha) {
+      const id = p[0] | (p[1] << 1) | (p[2] << 2) | (p[3] << 3);
+      const hue = (id * 47) % 360;
+      return `hsla(${hue}, 60%, 55%, ${alpha})`;
+    }
+
+    // Fixed activation pattern -> the leaf's exact linear map: out = c1*x1 + c2*x2 + c0
+    function leaf(p) {
+      let c1 = 0, c2 = 0, c0 = b2;
+      for (let j = 0; j < 4; j++) {
+        if (!p[j]) continue;                 // ReLU is off -> contributes nothing
+        c1 += W2[j] * W1[j][0];
+        c2 += W2[j] * W1[j][1];
+        c0 += W2[j] * b1[j];
+      }
+      return { c1, c2, c0 };
+    }
+
+    // The raw network forward pass (independent of the tree logic above)
+    function forward(x1, x2) {
+      let out = b2;
+      for (let j = 0; j < 4; j++) {
+        const z = W1[j][0] * x1 + W1[j][1] * x2 + b1[j];
+        out += W2[j] * Math.max(0, z);
+      }
+      return out;
+    }
+
+    function drawRegions() {
+      for (let iy = 0; iy < SIZE; iy += STEP) {
+        for (let ix = 0; ix < SIZE; ix += STEP) {
+          const x1 = (ix / SIZE) * 2 * VIEW - VIEW;
+          const x2 = VIEW - (iy / SIZE) * 2 * VIEW;
+          ctx.fillStyle = regionColor(pattern(x1, x2), 0.28);
+          ctx.fillRect(ix, iy, STEP, STEP);
+        }
+      }
+      // the 4 ReLU decision lines: W1[j].x + b1[j] = 0
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      for (let j = 0; j < 4; j++) {
+        const [w1, w2] = W1[j], bb = b1[j];
+        // solve for x2 at the two vertical edges x1 = -VIEW and x1 = +VIEW
+        const yAt = (x1) => -(w1 * x1 + bb) / w2;
+        ctx.beginPath();
+        ctx.moveTo(px(-VIEW), py(yAt(-VIEW)));
+        ctx.lineTo(px(VIEW), py(yAt(VIEW)));
+        ctx.stroke();
+      }
+    }
+
+    function render() {
+      const x1 = parseFloat(sx1.value), x2 = parseFloat(sx2.value);
+      document.getElementById('nnt-x1v').textContent = x1.toFixed(2);
+      document.getElementById('nnt-x2v').textContent = x2.toFixed(2);
+
+      ctx.clearRect(0, 0, SIZE, SIZE);
+      drawRegions();
+
+      // the live point
+      ctx.beginPath();
+      ctx.arc(px(x1), py(x2), 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#BF5FFF';
+      ctx.stroke();
+
+      // readouts
+      const p = pattern(x1, x2);
+      const pathEl = document.getElementById('nnt-path');
+      pathEl.innerHTML = '';
+      for (let j = 0; j < 4; j++) {
+        const z = W1[j][0] * x1 + W1[j][1] * x2 + b1[j];
+        const fires = p[j] === 1;
+        const row = document.createElement('div');
+        row.innerHTML =
+          `N${j}: ${fmt(W1[j][0])}&middot;x1 ${fmt(W1[j][1])}&middot;x2 ${fmt(b1[j])} &gt; 0 &nbsp; ` +
+          `<span style="color:${fires ? '#7CFC9E' : '#8892a6'}">${fires ? 'FIRES' : 'silent'}</span>`;
+        pathEl.appendChild(row);
+      }
+
+      const L = leaf(p);
+      document.getElementById('nnt-leaf').textContent =
+        `output = ${fmt(L.c1)}·x1 ${fmt(L.c2)}·x2 ${fmt(L.c0)}`;
+
+      const treeOut = L.c1 * x1 + L.c2 * x2 + L.c0;
+      const netOut = forward(x1, x2);
+      document.getElementById('nnt-out').innerHTML =
+        `<span style="color:#BF5FFF">tree</span>&nbsp;&nbsp;= ${treeOut.toFixed(6)}<br>` +
+        `<span style="color:var(--color-text-muted)">network</span> = ${netOut.toFixed(6)}<br>` +
+        `<span style="color:#7CFC9E">|difference| = ${Math.abs(treeOut - netOut).toExponential(1)}</span>`;
+    }
+
+    // dragging on the canvas moves the point
+    let dragging = false;
+    function setFromEvent(ev) {
+      const r = canvas.getBoundingClientRect();
+      const cx = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+      const cy = (ev.touches ? ev.touches[0].clientY : ev.clientY) - r.top;
+      const x1 = Math.max(-3, Math.min(3, (cx / SIZE) * 2 * VIEW - VIEW));
+      const x2 = Math.max(-3, Math.min(3, VIEW - (cy / SIZE) * 2 * VIEW));
+      sx1.value = x1.toFixed(2);
+      sx2.value = x2.toFixed(2);
+      render();
+    }
+    canvas.addEventListener('mousedown', (e) => { dragging = true; setFromEvent(e); });
+    window.addEventListener('mousemove', (e) => { if (dragging) setFromEvent(e); });
+    window.addEventListener('mouseup', () => { dragging = false; });
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); setFromEvent(e); }, { passive: false });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); setFromEvent(e); }, { passive: false });
+    sx1.addEventListener('input', render);
+    sx2.addEventListener('input', render);
+    render();
+  </script>
+
+  <!-- ─────────────────────────  END DEMO  ───────────────────────── -->
+
+  <p>
+    Notice what the demo makes concrete. The four white lines are the four ReLU switches. Every
+    coloured region is a leaf, and inside it the "output = ..." formula is a plain weighted sum,
+    exact for the whole region. Cross a line and one switch flips, you drop into a neighbouring
+    leaf, and the formula changes. The network is not a black box in that region at all. It is a
+    line.
+  </p>
+
+  <h2>Doing it for real</h2>
+
+  <p>
+    The demo hardcodes one small network, but nn2tree does the same construction for any supported
+    network automatically. The quick start looks like this:
+  </p>
+
+  <pre><code>import nn2tree
+import torch.nn as nn
+
+model = nn.Sequential(
+    nn.Linear(3, 8), nn.ReLU(),
+    nn.Linear(8, 4), nn.ReLU(),
+    nn.Linear(4, 1),
+)
+
+# Convert (lazy mode -> works for any size network)
+tree = nn2tree.convert(model, input_names=["age", "income", "score"])
+
+# Numerically identical to the original model
+tree.predict(x)
+
+# Verify equivalence over random inputs
+print(nn2tree.verify(tree, model, n_samples=1000))
+# VerificationResult(passed=True, max_diff=4.2e-07, ...)</code></pre>
+
+  <p>
+    That <code>max_diff</code> of about 4e-7 is just floating-point noise. The tree really is the
+    same function.
+  </p>
+
+  <h3>Explanations that are exact, not approximate</h3>
+
+  <p>
+    Because each leaf is genuinely linear, the usual explainability tools stop being estimates. The
+    per-feature contributions at a leaf are exact (they are SHAP values for a linear model), and the
+    decision path is the literal computation, not a summary of it.
+  </p>
+
+  <pre><code>=== Prediction explanation for x = [2.1, -0.3, 1.7] ===
+
+Decision path:
+  L0.N0: + 0.3*age - 0.7*income + 0.1*score > 0  =>  +0.9  [FIRES (>0)]
+  L0.N1: + 0.15*age + 0.9*income - 0.2*score > 0  =>  -0.01 [silent (<=0)]
+
+Leaf formula:
+  output = - 0.5*age + 0.8*score + 0.12
+
+Feature importance (global):
+  age    : 0.720  ####################
+  income : 0.210  ######
+  score  : 0.070  ##</code></pre>
+
+  <h3>Compile the tree to a dependency-free function</h3>
+
+  <p>
+    Once you have the tree, you can emit it as self-contained source with no runtime dependency on
+    PyTorch, numpy, or nn2tree itself. Handy for shipping a model into an environment that cannot
+    take a deep-learning stack.
+  </p>
+
+  <pre><code>print(tree.to_code("python"))   # if/else Python
+print(tree.to_code("rust"))     # Rust fn
+print(tree.to_code("go"))       # Go func
+print(tree.to_html())           # interactive collapsible tree</code></pre>
+
+  <h2>Where the equivalence holds, and where it stops</h2>
+
+  <p>
+    The rewrite is exact precisely when the network is a stack of affine maps followed by
+    piecewise-linear activations. That covers more than a plain MLP:
+  </p>
+
+  <ul>
+    <li><strong>ReLU and Leaky ReLU</strong> - exact, 2 branches per neuron.</li>
+    <li><strong>Linear / Dense / Conv2d</strong> - convolutions are unfolded to an equivalent linear map via im2col.</li>
+    <li><strong>BatchNorm</strong> - affine at inference, so it folds into the neighbouring layer with no extra tree depth.</li>
+    <li><strong>Residual / skip connections</strong> and a single-layer <strong>vanilla RNN</strong> unrolled over a fixed sequence length.</li>
+  </ul>
+
+  <p>
+    Smooth activations (sigmoid, tanh, GELU) are not piecewise-linear, so in hidden layers they
+    become a piecewise-linear approximation with a tunable number of segments. As an output-layer
+    activation on a classifier head they are applied exactly. And some things genuinely cannot be a
+    tree at all: LSTM and GRU gates multiply two learned signals, and attention mixes values with
+    input-dependent weights. Both are multiplicative rather than piecewise-linear, so no exact tree
+    exists. nn2tree detects those up front and raises a clear error rather than returning something
+    wrong.
+  </p>
+
+  <h2>The catch: exactness is not smallness</h2>
+
+  <p>
+    The honest limitation is size. Tree depth equals the number of hidden neurons, so the tree of a
+    large network is astronomically deep in the worst case. nn2tree handles this with a
+    <code>"lazy"</code> mode that computes the single path for a given input on demand (always exact,
+    any size), alongside an <code>"eager"</code> mode that materialises the whole tree for small
+    networks. The saving grace is that most activation patterns of a ReLU net are geometrically
+    impossible, so <code>prune_during_build=True</code> skips those dead branches while building and
+    lifts the size ceiling considerably.
+  </p>
+
+  <p>
+    So the value here is less "replace your network with a tree" and more "you now have a rigorous
+    lens on what the network is doing". Every prediction sits in a linear region you can write down,
+    inspect, and explain exactly. That is a nicer place to stand than the black box.
+  </p>
+
+  <p>
+    The code, cookbook, and the runnable end-to-end demo are on
+    <a href="https://github.com/hoofay/nn2tree" target="_blank" rel="noopener noreferrer">GitHub (hoofay/nn2tree)</a>.
+  </p>
+
+  <h2>Credit and citation</h2>
+
+  <p>
+    nn2tree is a direct implementation of the equivalence proved by Çağlar Aytekin. The idea, the
+    proof, and the framing all belong to that paper. If you build on this, cite the paper rather
+    than the library:
+  </p>
+
+  <blockquote>
+    Çağlar Aytekin (2022). <em>Neural Networks are Decision Trees.</em> arXiv:2210.05189.
+    <a href="https://arxiv.org/abs/2210.05189" target="_blank" rel="noopener noreferrer">https://arxiv.org/abs/2210.05189</a>
+  </blockquote>
+
+  <pre><code>{bibtex}</code></pre>
+
+</BlogLayout>
