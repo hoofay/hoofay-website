@@ -1,0 +1,574 @@
+---
+import BlogLayout from '../../../layouts/BlogLayout.astro';
+
+const title       = 'Finding Wrong Labels with Geometry, Not a Model';
+const description = 'geosift spots mislabelled data by looking at the shape of the data itself, so it stays reliable exactly where model-based cleaners fall apart: heavy, real-world noise. With two live demos.';
+const date        = '2026-07-31';
+const author      = 'hoofay';
+const tags        = ['python', 'machine-learning', 'label-noise', 'clustering'];
+const section     = 'datascience';
+
+// Kept as a string constant so the LaTeX curly braces aren't parsed as JSX.
+const bibtex = `@misc{hough2026geosift,
+  title     = {Model-independent label-noise detection by feature geometry: pooled vs. local estimators},
+  author    = {Hough, Daniel},
+  year      = {2026},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.21627002},
+  url       = {https://doi.org/10.5281/zenodo.21627002}
+}`;
+---
+
+<BlogLayout
+  title={title}
+  description={description}
+  date={date}
+  author={author}
+  tags={tags}
+  section={section}
+>
+
+  <p>
+    Almost every real dataset has wrong labels in it. A crowd worker mis-clicks, an auto-labeller
+    guesses badly, a scraped caption is nonsense. A few percent of a dataset being mislabelled is
+    normal; a few tens of percent is common in crowdsourced or weakly-supervised data. Those bad
+    labels quietly drag down every model you train on them, so it is worth finding and removing them.
+  </p>
+
+  <p>
+    <a href="https://github.com/hoofay/geosift" target="_blank" rel="noopener noreferrer">geosift</a>
+    is a small Python library that finds them. What makes it interesting is <em>how</em> it decides a
+    label is wrong: it never trains a model to do the judging. It looks only at the geometry of the
+    data, and that turns out to matter most exactly where the usual tools break.
+  </p>
+
+  <h2>The auditor problem</h2>
+
+  <p>
+    The standard way to catch bad labels is a method called <strong>Confident Learning</strong> (the
+    <code>cleanlab</code> library). The recipe is sensible: train a classifier on your labelled data,
+    then look for places where the trained model is confident the label is wrong. If the model is sure
+    a picture is a dog but the label says cat, that label is suspicious.
+  </p>
+
+  <p>
+    There is a catch, and it is circular. The model doing the checking was <em>itself trained on the
+    same possibly-wrong labels</em>. When only a few labels are bad, the model mostly learns the true
+    pattern and its complaints are trustworthy. But as the noise climbs, the model increasingly learns
+    the mistakes themselves, and its "confident disagreements" start reflecting its own corruption. The
+    memorable line from the paper: <em>the auditor has read the same record it is auditing.</em>
+  </p>
+
+  <p>
+    So the tool you most need under heavy noise is the tool that degrades fastest under heavy noise.
+  </p>
+
+  <h2>Birds of a feather</h2>
+
+  <p>
+    geosift sidesteps the circle by throwing the model away. The idea rests on one everyday
+    observation: things of the same kind tend to sit near each other. If you place every data point
+    in "feature space" (dogs near dogs, cats near cats), then to guess a point's true class you can
+    simply ask <em>what are its neighbours?</em> No training, no model to corrupt. A wrong label is
+    then just a point whose neighbourhood disagrees with it: a lone "cat" sitting deep in a crowd of
+    dogs.
+  </p>
+
+  <p>
+    Crucially, the <em>neighbourhoods themselves</em> are built from positions only, never from the
+    labels. Labels cannot corrupt something they were never used to make. That is the whole trick, and
+    it is why the signal survives when a trained model would not.
+  </p>
+
+  <p>
+    This isn't a brand-new idea. An earlier method, <strong>SimiFeat</strong>, already does training-free
+    detection this way. geosift's actual contribution is narrower and more interesting: it changes
+    <em>how big a neighbourhood you look at</em>, and it maps out exactly when that helps.
+  </p>
+
+  <h2>Two ways to look at a neighbourhood</h2>
+
+  <p>
+    There are two ways to read a point's surroundings, and they trade off against each other:
+  </p>
+
+  <ul>
+    <li>
+      <strong>Local</strong> (SimiFeat's way): look at the handful of points nearest to your target,
+      maybe its 10 nearest neighbours. Sharp and detailed, but it is a vote of only 10 possibly-wrong
+      labels, so it is jumpy — high variance.
+    </li>
+    <li>
+      <strong>Pooled</strong> (geosift's way, the "forest of means"): group the data into broad regions
+      of hundreds of points each, and read the class proportions of the <em>whole region</em>. Coarser,
+      but the vote is now over hundreds of labels, so it barely wobbles — low variance.
+    </li>
+  </ul>
+
+  <p>
+    The prediction that falls out of this: <strong>local wins when noise is light</strong> (detail
+    matters, and 10 mostly-correct neighbours are plenty), while <strong>pooled wins when noise is
+    heavy</strong> or clustered near class boundaries (a small neighbourhood is easily swamped with
+    errors, but a region of hundreds is barely moved). The demo below lets you feel exactly that.
+  </p>
+
+  <!-- ─────────────────────────  LIVE DEMO 1  ───────────────────────── -->
+
+  <h2>Demo 1: watch the small neighbourhood get fooled</h2>
+
+  <p>
+    Two classes, <span style="color:#FF6B8A;font-weight:600">pink</span> and
+    <span style="color:#4FA3FF;font-weight:600">blue</span>, running live in your browser. Drag the
+    <strong>noise</strong> slider to flip more and more labels at random. Click any point to inspect it.
+    For the point you pick we draw two lenses: its <span style="color:#7CFC9E;font-weight:600">local
+    neighbourhood</span> (the 10 nearest points) and its <span style="color:#BF5FFF;font-weight:600">pooled
+    region</span> (its whole cluster). Each lens votes on what the point's label <em>should</em> be.
+    Watch the local vote start flipping at high noise while the pooled vote holds steady.
+  </p>
+
+  <div id="gs-demo1" class="not-prose my-8 rounded-xl border border-datascience/30 bg-surface-raised p-5">
+    <div class="flex flex-col md:flex-row gap-6">
+
+      <div class="shrink-0">
+        <canvas id="gs-canvas" width="360" height="320"
+                class="rounded-lg border border-datascience/30 cursor-pointer"
+                style="width:360px;height:320px;touch-action:none;background:#0A0A0F;"></canvas>
+        <div class="mt-4 space-y-3 font-mono text-xs" style="color:var(--color-text-secondary);">
+          <label class="flex items-center gap-3">
+            <span style="width:3.4rem">noise</span>
+            <input id="gs-noise" type="range" min="0" max="60" step="1" value="15" class="flex-1" style="accent-color:#BF5FFF">
+            <span id="gs-noisev" style="width:2.6rem;text-align:right;color:#BF5FFF">15%</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex-1 font-mono text-xs leading-relaxed" style="color:var(--color-text-secondary);">
+        <div class="uppercase tracking-widest mb-2" style="color:var(--color-text-muted);">— the point you picked —</div>
+        <div id="gs-truth" class="mb-4 p-3 rounded-lg" style="background:#0A0A0F;border:1px solid var(--color-surface-border);"></div>
+
+        <div class="uppercase tracking-widest mb-2" style="color:#7CFC9E;">— local lens · 10 nearest —</div>
+        <div id="gs-local" class="mb-4 p-3 rounded-lg" style="background:#0A0A0F;border:1px solid var(--color-surface-border);"></div>
+
+        <div class="uppercase tracking-widest mb-2" style="color:#BF5FFF;">— pooled lens · whole region —</div>
+        <div id="gs-pooled" class="p-3 rounded-lg" style="background:#0A0A0F;border:1px solid var(--color-surface-border);"></div>
+      </div>
+    </div>
+    <p class="mt-4 text-xs font-mono" style="color:var(--color-text-muted);">
+      dots = labels (some now wrong) · <span style="color:#7CFC9E">green ring</span> = 10 nearest ·
+      <span style="color:#BF5FFF">purple ring</span> = pooled region · click to pick a point
+    </p>
+  </div>
+
+  <script>
+    // ---- tiny deterministic PRNG so the scene is identical for everyone ----
+    function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+    const N = 170;
+    const C = [[-1.15, 0.0], [1.15, 0.0]];   // two blob centres
+    const SPREAD = 0.78;
+    const COL = ['#FF6B8A', '#4FA3FF'];       // class 0 / class 1
+
+    // build a fixed dataset: position + true class + a per-point flip-threshold
+    const rnd = mulberry32(7);
+    function gauss(){ // Box-Muller
+      let u = 0, v = 0; while(u === 0) u = rnd(); while(v === 0) v = rnd();
+      return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+    }
+    const pts = [];
+    for(let i=0;i<N;i++){
+      const t = i < N/2 ? 0 : 1;
+      pts.push({
+        x: C[t][0] + gauss()*SPREAD,
+        y: C[t][1] + gauss()*SPREAD,
+        truth: t,
+        flip: rnd(),          // label flips once noise% exceeds 100*flip
+      });
+    }
+
+    // label-free k-means (k=2) on positions only — geometry, never labels
+    function kmeans(){
+      let cen = [[...C[0]], [...C[1]]];
+      const assign = new Array(N).fill(0);
+      for(let it=0; it<12; it++){
+        for(let i=0;i<N;i++){
+          const d0=(pts[i].x-cen[0][0])**2+(pts[i].y-cen[0][1])**2;
+          const d1=(pts[i].x-cen[1][0])**2+(pts[i].y-cen[1][1])**2;
+          assign[i]= d0<=d1?0:1;
+        }
+        const sum=[[0,0,0],[0,0,0]];
+        for(let i=0;i<N;i++){const c=assign[i];sum[c][0]+=pts[i].x;sum[c][1]+=pts[i].y;sum[c][2]++;}
+        for(let c=0;c<2;c++) if(sum[c][2]) cen[c]=[sum[c][0]/sum[c][2], sum[c][1]/sum[c][2]];
+      }
+      return {cen, assign};
+    }
+    const KM = kmeans();
+
+    const SW=360, SH=320, VX=3, VY=2.6;
+    const cv = document.getElementById('gs-canvas');
+    const cx = cv.getContext('2d');
+    const px = (x)=>((x+VX)/(2*VX))*SW;
+    const py = (y)=>((VY-y)/(2*VY))*SH;
+
+    let noise = 0.15;
+    let sel = 0;    // selected point index
+
+    // observed (possibly flipped) label of point i at the current noise level
+    const obs = (i)=> pts[i].flip < noise ? 1-pts[i].truth : pts[i].truth;
+
+    // pick a default point: a genuine pink one still inside the pink cluster but
+    // as close to the boundary as possible — its small neighbourhood tips under
+    // heavy noise while its pooled region holds, which is the whole point.
+    (function(){
+      let best=-1, bx=-9;
+      for(let i=0;i<N;i++) if(pts[i].truth===0 && KM.assign[i]===0 && pts[i].x>bx){bx=pts[i].x;best=i;}
+      sel = best;
+    })();
+
+    function nearest(i, k){
+      const d=[];
+      for(let j=0;j<N;j++) if(j!==i) d.push([(pts[i].x-pts[j].x)**2+(pts[i].y-pts[j].y)**2, j]);
+      d.sort((a,b)=>a[0]-b[0]);
+      return {idx: d.slice(0,k).map(z=>z[1]), r: Math.sqrt(d[k-1][0])};
+    }
+
+    function bar(pink, blue){
+      const tot = Math.max(1, pink+blue);
+      const pp = Math.round(100*pink/tot), bp = 100-pp;
+      return `<div style="display:flex;height:9px;border-radius:5px;overflow:hidden;margin:6px 0">`+
+             `<div style="width:${pp}%;background:#FF6B8A"></div>`+
+             `<div style="width:${bp}%;background:#4FA3FF"></div></div>`;
+    }
+
+    function draw(){
+      cx.clearRect(0,0,SW,SH);
+
+      const nn = nearest(sel, 10);
+      const myCluster = KM.assign[sel];
+
+      // pooled region: translucent circle over the selected point's cluster
+      let mcx=0,mcy=0,mc=0,maxd=0;
+      for(let i=0;i<N;i++) if(KM.assign[i]===myCluster){mcx+=pts[i].x;mcy+=pts[i].y;mc++;}
+      mcx/=mc; mcy/=mc;
+      for(let i=0;i<N;i++) if(KM.assign[i]===myCluster){const d=Math.sqrt((pts[i].x-mcx)**2+(pts[i].y-mcy)**2); if(d>maxd)maxd=d;}
+      cx.beginPath();
+      cx.arc(px(mcx),py(mcy), (maxd/(2*VX))*SW*0.92, 0, Math.PI*2);
+      cx.fillStyle='rgba(191,95,255,0.10)';
+      cx.strokeStyle='rgba(191,95,255,0.55)';
+      cx.lineWidth=1.5; cx.fill(); cx.stroke();
+
+      // local region: circle out to the 10th nearest neighbour
+      cx.beginPath();
+      cx.arc(px(pts[sel].x),py(pts[sel].y), (nn.r/(2*VX))*SW, 0, Math.PI*2);
+      cx.fillStyle='rgba(124,252,158,0.08)';
+      cx.strokeStyle='rgba(124,252,158,0.7)';
+      cx.lineWidth=1.5; cx.fill(); cx.stroke();
+
+      // points, coloured by their (possibly wrong) observed label
+      for(let i=0;i<N;i++){
+        cx.beginPath();
+        cx.arc(px(pts[i].x),py(pts[i].y), 3.4, 0, Math.PI*2);
+        cx.fillStyle=COL[obs(i)];
+        cx.globalAlpha = (i===sel)?1:0.85;
+        cx.fill();
+        cx.globalAlpha = 1;
+      }
+
+      // selected point marker
+      cx.beginPath();
+      cx.arc(px(pts[sel].x),py(pts[sel].y), 6.5, 0, Math.PI*2);
+      cx.lineWidth=2.5; cx.strokeStyle='#fff'; cx.stroke();
+
+      // ---- readouts ----
+      const oLab = obs(sel), tLab = pts[sel].truth;
+      const nameOf = (c)=> c===0 ? 'PINK' : 'BLUE';
+      const misl = oLab !== tLab;
+
+      document.getElementById('gs-truth').innerHTML =
+        `label says: <span style="color:${COL[oLab]}">${nameOf(oLab)}</span>` +
+        (misl ? `  &nbsp;<span style="color:#FFB454">(this one is actually ${nameOf(tLab)} — a real mislabel)</span>`
+               : `  &nbsp;<span style="color:var(--color-text-muted)">(genuinely ${nameOf(tLab)})</span>`);
+
+      // local vote
+      let lp=0, lb=0; nn.idx.forEach(j=> obs(j)===0 ? lp++ : lb++);
+      const lPred = lp>=lb ? 0 : 1;
+      document.getElementById('gs-local').innerHTML =
+        `${lp} pink vs ${lb} blue` + bar(lp,lb) +
+        `verdict: should be <span style="color:${COL[lPred]}">${nameOf(lPred)}</span> ` +
+        (lPred===tLab ? `<span style="color:#7CFC9E">✓ right</span>`
+                      : `<span style="color:#FF5C5C">✗ fooled by noise</span>`);
+
+      // pooled vote
+      let pp=0, pb=0;
+      for(let i=0;i<N;i++) if(KM.assign[i]===myCluster){ obs(i)===0 ? pp++ : pb++; }
+      const pPred = pp>=pb ? 0 : 1;
+      document.getElementById('gs-pooled').innerHTML =
+        `${pp} pink vs ${pb} blue &nbsp;<span style="color:var(--color-text-muted)">(${pp+pb} points)</span>` + bar(pp,pb) +
+        `verdict: should be <span style="color:${COL[pPred]}">${nameOf(pPred)}</span> ` +
+        (pPred===tLab ? `<span style="color:#7CFC9E">✓ right</span>`
+                      : `<span style="color:#FF5C5C">✗ fooled by noise</span>`);
+    }
+
+    document.getElementById('gs-noise').addEventListener('input', (e)=>{
+      noise = (+e.target.value)/100;
+      document.getElementById('gs-noisev').textContent = e.target.value + '%';
+      draw();
+    });
+    function pick(ev){
+      const r = cv.getBoundingClientRect();
+      const mx = ((ev.touches?ev.touches[0].clientX:ev.clientX)-r.left)/r.width*SW;
+      const my = ((ev.touches?ev.touches[0].clientY:ev.clientY)-r.top)/r.height*SH;
+      let best=-1, bd=1e9;
+      for(let i=0;i<N;i++){const d=(px(pts[i].x)-mx)**2+(py(pts[i].y)-my)**2; if(d<bd){bd=d;best=i;}}
+      sel=best; draw();
+    }
+    cv.addEventListener('mousedown', pick);
+    cv.addEventListener('touchstart', (e)=>{e.preventDefault();pick(e);}, {passive:false});
+    draw();
+  </script>
+
+  <!-- ─────────────────────────  END DEMO 1  ───────────────────────── -->
+
+  <p>
+    Try this: pick the highlighted pink point near the boundary and slide the noise up past 40%. The
+    green local vote — only 10 labels — swings around and eventually calls a genuinely-pink point blue.
+    The purple pooled vote, counting hundreds of labels, keeps pointing at pink long after. That is the
+    whole argument in one picture: <strong>a small sample is easy to poison; a big one is not</strong>.
+  </p>
+
+  <p>
+    (Two honest notes. This toy uses random symmetric noise so you can see the mechanism; the real
+    advantage is largest under <em>boundary-concentrated</em> noise, which is messier to animate. And
+    at low noise you will see the local lens is perfectly reliable too — that is exactly the regime
+    where it is actually the better choice.)
+  </p>
+
+  <h2>Demo 2: the crossover, with the real numbers</h2>
+
+  <p>
+    So who actually wins? The paper measures both detectors on ten datasets across three kinds of
+    label noise, scoring each by <strong>F1</strong> against the known list of flipped labels (higher is
+    better — it balances catching real errors against false accusations). The chart below shows the
+    measured F1 for <span style="color:#BF5FFF;font-weight:600">geosift (pooled)</span> versus
+    <span style="color:#8CA0B8;font-weight:600">SimiFeat (local)</span>. Toggle between 20% and 40%
+    noise and watch the bars swap places.
+  </p>
+
+  <div id="gs-demo2" class="not-prose my-8 rounded-xl border border-datascience/30 bg-surface-raised p-5">
+    <div class="flex gap-2 mb-4 font-mono text-xs">
+      <button id="gs-b20" class="px-3 py-1.5 rounded-md border transition-colors" style="border-color:var(--color-surface-border);color:var(--color-text-secondary)">20% noise</button>
+      <button id="gs-b40" class="px-3 py-1.5 rounded-md border transition-colors" style="border-color:var(--color-surface-border);color:var(--color-text-secondary)">40% noise</button>
+    </div>
+    <canvas id="gs-bars" width="620" height="300" style="width:100%;max-width:620px;height:auto;background:#0A0A0F;border-radius:0.5rem;border:1px solid var(--color-surface-border)"></canvas>
+    <p id="gs-caption" class="mt-3 text-xs font-mono" style="color:var(--color-text-muted);"></p>
+  </div>
+
+  <script>
+    // Real F1 numbers from the paper (§5.2, voting detector). [pooled/geosift, local/SimiFeat]
+    const DATA = {
+      20: { title:'20% of labels wrong',
+            note:'At light-to-moderate noise, local detail wins on every noise type.',
+            groups:[
+              {name:'symmetric',  f:[0.622,0.736]},
+              {name:'asymmetric', f:[0.615,0.711]},
+              {name:'boundary',   f:[0.463,0.467]},
+            ]},
+      40: { title:'40% of labels wrong',
+            note:'At heavy noise the pooled method overtakes on structured & boundary noise — the crossover.',
+            groups:[
+              {name:'symmetric',  f:[0.740,0.744]},
+              {name:'asymmetric', f:[0.677,0.618]},
+              {name:'boundary',   f:[0.627,0.582]},
+            ]},
+    };
+    const PURPLE='#BF5FFF', SLATE='#8CA0B8';
+    const bc = document.getElementById('gs-bars');
+    const bx = bc.getContext('2d');
+    const BW=620, BH=300, PAD=46, TOP=24, BOT=54;
+    let cur = 40;
+    // animated heights
+    let anim = DATA[40].groups.map(g=>g.f.map(()=>0));
+
+    function drawBars(){
+      bx.clearRect(0,0,BW,BH);
+      const plotH = BH-TOP-BOT, plotW = BW-PAD-16, x0=PAD, y0=BH-BOT;
+      const yMax=0.8;
+      // gridlines + y labels
+      bx.strokeStyle='rgba(255,255,255,0.08)';
+      bx.fillStyle='#6b7280'; bx.font='11px monospace'; bx.textAlign='right';
+      for(let v=0; v<=0.8+1e-9; v+=0.2){
+        const y=y0-(v/yMax)*plotH;
+        bx.beginPath(); bx.moveTo(x0,y); bx.lineTo(x0+plotW,y); bx.stroke();
+        bx.fillText(v.toFixed(1), x0-8, y+4);
+      }
+      const groups=DATA[cur].groups, gW=plotW/groups.length;
+      groups.forEach((g,gi)=>{
+        const gx=x0+gi*gW;
+        const barW=gW*0.26, gap=gW*0.08, cenx=gx+gW/2;
+        [PURPLE,SLATE].forEach((col,bi)=>{
+          const h=(anim[gi][bi]/yMax)*plotH;
+          const bxpos = cenx + (bi===0 ? -barW-gap/2 : gap/2);
+          bx.fillStyle=col;
+          bx.fillRect(bxpos, y0-h, barW, h);
+          // value label
+          bx.fillStyle=col; bx.font='bold 12px monospace'; bx.textAlign='center';
+          bx.fillText(g.f[bi].toFixed(3), bxpos+barW/2, y0-h-7);
+        });
+        // group label + winner tick
+        bx.fillStyle='#c7ced9'; bx.font='12px monospace'; bx.textAlign='center';
+        bx.fillText(g.name, cenx, y0+20);
+        const winner = g.f[0] > g.f[1] ? 'geosift wins' : (g.f[1]>g.f[0] ? 'local wins' : 'tie');
+        bx.fillStyle = g.f[0] > g.f[1] ? PURPLE : (g.f[1]>g.f[0] ? SLATE : '#6b7280');
+        bx.font='10px monospace';
+        bx.fillText(winner, cenx, y0+36);
+      });
+      // legend
+      bx.textAlign='left'; bx.font='11px monospace';
+      bx.fillStyle=PURPLE; bx.fillRect(x0, 10, 10,10); bx.fillStyle='#c7ced9'; bx.fillText('geosift (pooled)', x0+16, 19);
+      bx.fillStyle=SLATE;  bx.fillRect(x0+150,10,10,10); bx.fillStyle='#c7ced9'; bx.fillText('SimiFeat (local)', x0+166,19);
+    }
+
+    function animateTo(target){
+      const goal = DATA[target].groups.map(g=>g.f);
+      cur = target;
+      let step=0;
+      const iv=setInterval(()=>{
+        step++; const t=Math.min(1, step/18);
+        anim = anim.map((row,gi)=> row.map((_,bi)=> goal[gi][bi]*t));
+        drawBars();
+        if(t>=1) clearInterval(iv);
+      }, 16);
+      document.getElementById('gs-caption').textContent = DATA[target].title + ' — ' + DATA[target].note;
+      const on='#BF5FFF', off='var(--color-surface-border)';
+      document.getElementById('gs-b20').style.borderColor = target===20?on:off;
+      document.getElementById('gs-b20').style.color = target===20?'#BF5FFF':'var(--color-text-secondary)';
+      document.getElementById('gs-b40').style.borderColor = target===40?on:off;
+      document.getElementById('gs-b40').style.color = target===40?'#BF5FFF':'var(--color-text-secondary)';
+    }
+    document.getElementById('gs-b20').addEventListener('click', ()=>animateTo(20));
+    document.getElementById('gs-b40').addEventListener('click', ()=>animateTo(40));
+    animateTo(40);
+  </script>
+
+  <p>
+    At <strong>20% noise the local method wins across the board</strong> — its finer resolution pays
+    off and there aren't enough errors to swamp a small neighbourhood. At <strong>40% the picture
+    flips</strong>: on asymmetric (structured) and boundary noise, the pooled forest pulls ahead,
+    because those are exactly the conditions that poison a small neighbourhood while leaving a big
+    region intact. ("Boundary" noise is the realistic hard case — the errors pile up right where two
+    classes meet.)
+  </p>
+
+  <p>
+    Averaged over everything, SimiFeat is still the marginally stronger single method. geosift is not a
+    replacement; it is a <strong>specialist for the heavy-noise regime</strong>, and it knows it.
+  </p>
+
+  <h2>Does it hold on real mistakes?</h2>
+
+  <p>
+    Synthetic noise is a fair test bench, but the real prize is <em>genuine human error</em>.
+    <strong>CIFAR-10N</strong> is a version of the classic CIFAR-10 image set re-labelled by real crowd
+    workers; its "worst" split carries about 40% real mislabels — squarely in the regime where pooling
+    should win. Running every detector on CLIP image embeddings (where similar images naturally cluster
+    together), the head-to-head F1:
+  </p>
+
+  <div class="not-prose my-6 space-y-2 font-mono text-sm">
+    <div class="flex items-center gap-3">
+      <span style="width:12rem;color:#BF5FFF">geosift (pooled)</span>
+      <div style="flex:1;background:#0A0A0F;border-radius:5px;overflow:hidden;height:22px;border:1px solid var(--color-surface-border)">
+        <div style="width:93.0%;height:100%;background:#BF5FFF;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;color:#0A0A0F;font-weight:700">0.930</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <span style="width:12rem;color:#8CA0B8">SimiFeat (local)</span>
+      <div style="flex:1;background:#0A0A0F;border-radius:5px;overflow:hidden;height:22px;border:1px solid var(--color-surface-border)">
+        <div style="width:91.5%;height:100%;background:#8CA0B8;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;color:#0A0A0F;font-weight:700">0.915</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <span style="width:12rem;color:var(--color-text-muted)">model-based (cleanlab)</span>
+      <div style="flex:1;background:#0A0A0F;border-radius:5px;overflow:hidden;height:22px;border:1px solid var(--color-surface-border)">
+        <div style="width:90.4%;height:100%;background:#5a6472;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;color:#0A0A0F;font-weight:700">0.904</div>
+      </div>
+    </div>
+  </div>
+
+  <p>
+    On genuine 40% human noise the pooled forest is the <strong>best</strong> detector — beating both
+    the local method and the model-based baseline. The synthetic crossover reproduces on real mistakes.
+    (One caveat worth stating: geometry needs a representation where classes actually cluster. On raw
+    pixels, every method here is near chance — the CLIP embedding is doing real work.)
+  </p>
+
+  <h2>A detail that surprised the author: the detector matters as much as the score</h2>
+
+  <p>
+    There are really two steps: an <em>estimator</em> produces a suspiciousness score for each point,
+    and a <em>detector</em> turns those scores into actual accusations. It turns out the second step is
+    a first-order choice on its own. cleanlab's native pruning rule was tuned for a trained model's
+    smooth probabilities and fits geometry's spikier scores badly; a dead-simple <strong>voting</strong>
+    rule — "flag a point if its neighbourhood's favourite class isn't its label" — beats it
+    substantially for geometric scores. The practical upshot: <em>any</em> fair "method A vs method B"
+    comparison has to hold the detector fixed, which is why every number above uses the same voting rule
+    for both sides.
+  </p>
+
+  <h2>What you actually get</h2>
+
+  <p>
+    geosift ships as a small, numpy-only library. The core object cleans a dataset in three lines:
+  </p>
+
+  <pre><code>from geosift import GeoCleaner
+
+gc = GeoCleaner(clusters_per_class=3, n_estimators=25, random_state=0).fit(X, y)
+
+issues            = gc.label_issues(X, y)         # boolean mask of suspected mislabels
+X_clean, y_clean  = gc.clean(X, y)                # the data with issues dropped
+quality           = gc.label_quality_scores(X, y) # 0..1, higher = more trustworthy
+hardness          = gc.hardness(X_new)            # label-free ambiguity, even at inference</code></pre>
+
+  <p>
+    Beyond detection, that last line is a quiet bonus. Because the geometry needs no labels, geosift can
+    hand you a per-point <strong>hardness</strong> score — how ambiguous a point is — computed on brand
+    new, unlabelled inputs at prediction time. It is available before you have trained anything, it is
+    reusable across every model you later build, and it doesn't suffer the confidence-collapse a
+    heavily-noise-trained model does. Handy for triage: send the hardest cases to a human.
+  </p>
+
+  <p>
+    The three defaults worth knowing: <code>clusters_per_class=3</code> is the robust sweet spot (one
+    cluster per class can't capture sub-groups; past three the gains flatten), the clustering is bagged
+    over random subsets of both rows and features to stabilise it, and everything label-dependent is
+    computed <em>out-of-fold</em> so a point never helps judge itself.
+  </p>
+
+  <h2>When to reach for it (and when not to)</h2>
+
+  <ul>
+    <li><strong>Use it</strong> when you suspect <em>substantial</em> label noise (tens of percent),
+      or noise concentrated near class boundaries, or you just want a second, model-independent opinion
+      on which labels to trust.</li>
+    <li><strong>Don't bother</strong> at near-clean labels, where a trained model is just as good and
+      SimiFeat's local view is a touch sharper. geosift is honest about being a specialist.</li>
+    <li>Either way it needs a feature space where the classes cluster. If your raw features don't
+      separate the classes, embed them first (as with CLIP above).</li>
+  </ul>
+
+  <p>
+    The code, a full cookbook (<code>GUIDE.md</code>), and the complete experimental writeup live on
+    <a href="https://github.com/hoofay/geosift" target="_blank" rel="noopener noreferrer">GitHub
+    (hoofay/geosift)</a>.
+  </p>
+
+  <h2>Citation</h2>
+
+  <p>
+    If you build on geosift or its findings, the paper is archived on Zenodo
+    (<a href="https://doi.org/10.5281/zenodo.21627002" target="_blank" rel="noopener noreferrer">doi:10.5281/zenodo.21627002</a>):
+  </p>
+
+  <pre><code>{bibtex}</code></pre>
+
+</BlogLayout>
